@@ -8,6 +8,8 @@ final class EventEditor: NSObject, NSWindowDelegate, NSTextFieldDelegate {
     var onClose: (() -> Void)?
     var onDelete: (() -> Void)?
     let titleField = NSTextField()
+    let recurrenceButton = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let recurrenceNote = Theme.label("", size: 11, color: Theme.muted)
     private let errorLabel = Theme.label("", size: 11, color: .systemRed)
     private var saveButton: NSButton!
     private var finished = false
@@ -17,16 +19,17 @@ final class EventEditor: NSObject, NSWindowDelegate, NSTextFieldDelegate {
     var startDate: CivilDate { didSet { refreshDates() } }
     var endDate: CivilDate { didSet { refreshDates() } }
     init(event: CalendarEvent?, day: CivilDate, store: EventStore) {
+        let event = event.flatMap { selected in store.events.first { $0.id == selected.id } }
         self.event = event; self.store = store
         startDate = event?.startDate ?? day; endDate = event?.endDate ?? day
-        window = CalendarPanel(contentRect: NSRect(x: 0, y: 0, width: 344, height: 252), styleMask: [.borderless], backing: .buffered, defer: false)
+        window = CalendarPanel(contentRect: NSRect(x: 0, y: 0, width: 344, height: 314), styleMask: [.borderless], backing: .buffered, defer: false)
         super.init()
         window.title = event == nil ? "新增事项" : "事项详情"
         window.level = .floating; window.isReleasedWhenClosed = false; window.hidesOnDeactivate = false
         window.delegate = self; window.appearance = NSAppearance(named: .aqua)
         window.isOpaque = false; window.backgroundColor = .clear; window.hasShadow = true
         window.collectionBehavior = [.fullScreenAuxiliary, .canJoinAllSpaces]
-        let view = FlippedView(frame: NSRect(x: 0, y: 0, width: 344, height: 252))
+        let view = FlippedView(frame: NSRect(x: 0, y: 0, width: 344, height: 314))
         view.wantsLayer = true; view.layer?.backgroundColor = NSColor.white.cgColor; view.layer?.cornerRadius = 12
         view.layer?.borderColor = Theme.line.cgColor; view.layer?.borderWidth = 1; window.contentView = view
         let heading = Theme.label(window.title, size: 16, weight: .semibold)
@@ -48,19 +51,34 @@ final class EventEditor: NSObject, NSWindowDelegate, NSTextFieldDelegate {
             button.restingBackground = NSColor(white: 0.97, alpha: 1); button.hoverBackground = Theme.purple.withAlphaComponent(0.10); button.layer?.cornerRadius = 5
             if index == 0 { startButton = button } else { endButton = button }; view.addSubview(button)
         }
+        let repeatLabel = Theme.label("重复", size: 13, color: Theme.muted)
+        repeatLabel.frame = NSRect(x: 18, y: 171, width: 42, height: 24); view.addSubview(repeatLabel)
+        recurrenceButton.frame = NSRect(x: 65, y: 166, width: 264, height: 30)
+        recurrenceButton.addItems(withTitles: RepeatFrequency.allCases.map(\.title))
+        recurrenceButton.selectItem(at: RepeatFrequency.allCases.firstIndex(of: event?.recurrence ?? .none)!)
+        recurrenceButton.font = .systemFont(ofSize: 14); recurrenceButton.setAccessibilityLabel("重复频率")
+        recurrenceButton.target = self; recurrenceButton.action = #selector(recurrenceChanged)
+        view.addSubview(recurrenceButton)
+        recurrenceNote.frame = NSRect(x: 18, y: 202, width: 308, height: 20); view.addSubview(recurrenceNote)
+        recurrenceChanged()
         refreshDates()
-        errorLabel.frame = NSRect(x: 18, y: 168, width: 308, height: 30)
+        errorLabel.frame = NSRect(x: 18, y: 230, width: 308, height: 30)
         errorLabel.maximumNumberOfLines = 2; errorLabel.lineBreakMode = .byWordWrapping; view.addSubview(errorLabel)
         let cancel = NSButton(title: "取消", target: self, action: #selector(cancel)); cancel.bezelStyle = .rounded
-        cancel.keyEquivalent = "\u{1b}"; cancel.frame = NSRect(x: 164, y: 207, width: 76, height: 29); view.addSubview(cancel)
+        cancel.keyEquivalent = "\u{1b}"; cancel.frame = NSRect(x: 164, y: 269, width: 76, height: 29); view.addSubview(cancel)
         saveButton = NSButton(title: "保存", target: self, action: #selector(save)); saveButton.bezelStyle = .rounded
         saveButton.keyEquivalent = "\r"; saveButton.bezelColor = Theme.purple; saveButton.contentTintColor = .white
-        saveButton.frame = NSRect(x: 244, y: 207, width: 82, height: 29); view.addSubview(saveButton)
+        saveButton.frame = NSRect(x: 244, y: 269, width: 82, height: 29); view.addSubview(saveButton)
         if event != nil {
             let delete = NSButton(title: "删除", target: self, action: #selector(deleteEvent)); delete.bezelStyle = .rounded
-            delete.contentTintColor = .systemRed; delete.frame = NSRect(x: 18, y: 207, width: 76, height: 29); view.addSubview(delete)
+            delete.contentTintColor = .systemRed; delete.frame = NSRect(x: 18, y: 269, width: 76, height: 29); view.addSubview(delete)
         }
         window.initialFirstResponder = titleField; updateSave()
+    }
+    @objc func recurrenceChanged() {
+        let frequency = RepeatFrequency.allCases[recurrenceButton.indexOfSelectedItem]
+        recurrenceNote.stringValue = frequency == .none && (event?.recurrence ?? .none) != .none ? "保存将更新整组日程，并停止后续重复" :
+            (frequency == .none ? "" : "从开始日期重复；编辑、拖动、删除作用于整组")
     }
     private func refreshDates() {
         for (button, day, label) in [(startButton, startDate, "开始日期"), (endButton, endDate, "结束日期")] {
@@ -102,7 +120,7 @@ final class EventEditor: NSObject, NSWindowDelegate, NSTextFieldDelegate {
     @objc func save() {
         guard window.attachedSheet == nil, !finished else { return }
         window.makeFirstResponder(nil)
-        do { try store.save(id: event?.id, title: titleField.stringValue, startDate: startDate, endDate: endDate); finish() }
+        do { try store.save(id: event?.id, title: titleField.stringValue, startDate: startDate, endDate: endDate, recurrence: RepeatFrequency.allCases[recurrenceButton.indexOfSelectedItem]); finish() }
         catch { errorLabel.stringValue = error.localizedDescription; NSLog("LiteCal save error: %@", error.localizedDescription) }
     }
     @objc func cancel() { guard window.attachedSheet == nil else { return }; if let dateSelector { dateSelector.close(); return }; finish() }
@@ -206,8 +224,8 @@ final class DayListWindow: NSObject, NSWindowDelegate {
             button.contentTintColor = Theme.eventInk(past: item.isPast(today: CivilDate(Date())))
             button.wantsLayer = true; button.layer?.backgroundColor = Theme.eventFill(past: item.isPast(today: CivilDate(Date()))).cgColor; button.layer?.cornerRadius = 4
             let menu = NSMenu()
-            menu.addItem(ClosureMenuItem(title: "编辑") { [weak self] in self?.onEdit?(item) })
-            menu.addItem(ClosureMenuItem(title: "删除") { [weak self] in self?.onDelete?(item) })
+            menu.addItem(ClosureMenuItem(title: item.recurrence == .none ? "编辑" : "编辑整组") { [weak self] in self?.onEdit?(item) })
+            menu.addItem(ClosureMenuItem(title: item.recurrence == .none ? "删除" : "删除整组") { [weak self] in self?.onDelete?(item) })
             button.menu = menu
             button.font = .systemFont(ofSize: 15); button.alignment = .left
             button.cell?.wraps = true; button.cell?.lineBreakMode = .byWordWrapping

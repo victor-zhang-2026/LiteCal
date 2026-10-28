@@ -16,3 +16,6 @@ decision.md
 handoff.md
 docs/DEVELOPMENT-local.md
 docs/TEST-REPORT*.md
+
+release/v1.2.0/*.zip
+release/v1.2.0/download-verification/

@@ -2,7 +2,7 @@
 
 ## 安装
 
-从 [v1.1.0 Release](https://github.com/victor-zhang-2026/LiteCal/releases/tag/v1.1.0) 下载 `LiteCal-1.1.0-macOS-arm64.zip`，解压，将 App 拖入「应用程序」。macOS 13+ 部署目标，Apple silicon；实际测试环境 macOS 27.0.1。当前界面为简体中文。
+从 [v1.2.0 Release](https://github.com/victor-zhang-2026/LiteCal/releases/tag/v1.2.0) 下载 `LiteCal-1.2.0-macOS-arm64.zip`，解压，将 App 拖入「应用程序」。macOS 13+ 部署目标，Apple silicon；实际测试环境 macOS 27.0.1。当前界面为简体中文。
 
 发布包采用 ad-hoc 本地签名，尚未 Developer ID 签名/公证。如系统阻止打开，先确认来自本仓库并核对 SHA-256，然后按 [Apple 官方指南](https://support.apple.com/en-us/102445)使用「系统设置 → 隐私与安全性 → 仍要打开」。无需关闭系统安全保护。
 
@@ -13,7 +13,7 @@ Download the app ZIP from the Release, unzip, and move LiteCal to Applications. 
 在 ZIP 所在目录运行以下命令，并与同一 Release 的 `SHA256SUMS` 对照：
 
 ```sh
-shasum -a 256 LiteCal-1.1.0-macOS-arm64.zip
+shasum -a 256 LiteCal-1.2.0-macOS-arm64.zip
 ```
 
 ## 升级
@@ -26,12 +26,13 @@ Quit the existing instance before replacing the app. Data is outside the app bun
 
 Finder → 前往 → 前往文件夹：`~/Library/Application Support/LiteCal/`。
 
-- `events.json`：当前事项，schema 2，起止日期保存为 `YYYY-MM-DD`。
+- `events.json`：当前事项，schema 3，起止日期保存为 `YYYY-MM-DD`。
 - `events.backup.json`：上次有效数据的备份。
 - `events.schema1.backup.json`：首次迁移旧数据前的原始备份；存在不同来源时保留额外 UUID 备份，不覆盖。
+- `events.schema2.backup.json`：从 1.1 升级到重复日程版本前的原始备份，同样不会覆盖不同来源。
 - 悬浮位置偏好：`~/Library/Preferences/app.litecal.mac.plist`。
 
-迁移保留 ID、名称、创建与更新时间；旧单日字段转为相同的开始、结束日期。失败或未知版本停止写入。V1.0 无法读取 schema 2，降级前需理解备份对应的历史时间点。
+迁移保留 ID、名称、创建与更新时间；旧单日字段转为相同的开始、结束日期。原有事项默认「不重复」；重复日程保存一条规则，按查看范围生成显示。失败或未知版本停止写入。V1.1 及更早版本无法读取 schema 3；降级需先备份整个数据目录并恢复对应旧版备份，备份之后的修改不会随之保留。
 
 For recovery, quit LiteCal and copy the whole data directory somewhere safe first. Replace `events.json` with the desired valid backup and reopen. A backup restores its own point in time; it does not merge later changes.
 

@@ -125,10 +125,11 @@ final class MonthView: NSView {
             cell.onNew = { [weak self, weak cell] in guard let self, let cell else { return }; self.controller?.edit(event: nil, day: day, anchor: cell.frame) }
             addSubview(cell); return cell
         }
-        eventLayout = MonthEventLayout.calculate(days: days, events: store.events)
-        let byID = Dictionary(uniqueKeysWithValues: store.events.map { ($0.id, $0) })
+        let occurrences = store.occurrences(from: days.first!, through: days.last!)
+        eventLayout = MonthEventLayout.calculate(days: days, events: occurrences)
+        let byID = Dictionary(uniqueKeysWithValues: occurrences.map { ($0.occurrenceKey, $0) })
         bars = eventLayout.segments.filter { $0.lane < MonthEventLayout.visibleLanes }.compactMap { segment in
-            guard let event = byID[segment.eventID] else { return nil }
+            guard let event = byID[segment.occurrenceKey] else { return nil }
             let bar = EventBarView(event: event, segment: segment, today: current); bar.monthView = self
             addSubview(bar); return bar
         }
@@ -300,7 +301,7 @@ final class EventBarView: NSView {
     init(event: CalendarEvent, segment: EventSegment, today: CivilDate) {
         self.event = event; self.segment = segment; self.today = today
         super.init(frame: .zero)
-        toolTip = "\(event.title)\n\(event.startDate) — \(event.endDate)"
+        toolTip = "\(event.title)\n\(event.startDate) — \(event.endDate)" + (event.recurrence == .none ? "" : "\n\(event.recurrence.title)重复 · 拖动会移动整组日程")
         setAccessibilityElement(true); setAccessibilityRole(.button); setAccessibilityLabel(event.title + "，" + event.startDate.description + " 至 " + event.endDate.description)
     }
     required init?(coder: NSCoder) { fatalError() }

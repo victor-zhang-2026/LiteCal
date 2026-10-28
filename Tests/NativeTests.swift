@@ -368,6 +368,62 @@ import AppKit
             button(window, "退出").performClick(nil)
         }
         check(controller.confirmQuit(), "quit confirmation accepts explicit exit")
+        // Recurrence UI integration uses a separate store and native windows.
+        let recurrenceStore = EventStore(directory: directory.appendingPathComponent("recurrence-ui-" + UUID().uuidString))
+        let recurrenceController = FloatingController(store: recurrenceStore, defaults: defaults)
+        let anchorDate = CivilDate(key: "2024-01-31")!
+        recurrenceController.open(); recurrenceController.calendar.jump(to: anchorDate)
+        for frequency in RepeatFrequency.allCases {
+            recurrenceController.edit(event: nil, day: anchorDate)
+            let edit = recurrenceController.editor!
+            check(edit.recurrenceButton.itemTitles == ["不重复", "每天", "每周", "每月", "每年"], "only five fixed repeat options")
+            check(edit.recurrenceButton.titleOfSelectedItem == "不重复", "new event defaults to no repetition")
+            edit.titleField.stringValue = "重复测试 " + frequency.title
+            edit.recurrenceButton.selectItem(withTitle: frequency.title); edit.recurrenceChanged()
+            if frequency == .monthly { try snapshot(edit.window.contentView!, "recurrence-editor") }
+            edit.save(); pump(0.02)
+            let saved = recurrenceStore.events.last!
+            check(saved.recurrence == frequency, "native editor saves \(frequency)")
+            recurrenceController.edit(event: saved, day: anchorDate)
+            check(recurrenceController.editor!.recurrenceButton.titleOfSelectedItem == frequency.title, "editing restores repeat selection")
+            recurrenceController.editor!.recurrenceButton.selectItem(withTitle: "每年")
+            recurrenceController.editor!.cancel()
+            check(recurrenceStore.events.last!.recurrence == frequency, "cancel never changes recurrence")
+        }
+        let monthSeries = recurrenceStore.events.first { $0.recurrence == .monthly }!
+        // Remove other fixture series so visible bars and overflow can be inspected exactly.
+        for item in recurrenceStore.events where item.id != monthSeries.id { try recurrenceStore.delete(id: item.id) }
+        recurrenceController.calendar.jump(to: CivilDate(key: "2024-03-01")!)
+        recurrenceController.calendar.layoutSubtreeIfNeeded()
+        let marchBar = recurrenceController.calendar.bars.first { $0.event.startDate == CivilDate(key: "2024-03-31")! }!
+        check(marchBar.event.id == monthSeries.id, "future monthly occurrence rendered with source series ID")
+        recurrenceController.calendar.edit(marchBar)
+        check(recurrenceController.editor!.startDate == anchorDate, "future occurrence edit opens original series anchor")
+        recurrenceController.editor!.titleField.stringValue = "整组月末"
+        recurrenceController.editor!.save()
+        check(recurrenceStore.events(on: CivilDate(key: "2025-02-28")!).first?.title == "整组月末", "series edit changes future occurrences")
+        let dailySpan = try recurrenceStore.save(title: "每日跨日", startDate: CivilDate(key: "2024-03-01")!, endDate: CivilDate(key: "2024-03-04")!, recurrence: .daily)
+        recurrenceController.calendar.layoutSubtreeIfNeeded()
+        let crowded = CivilDate(key: "2024-03-10")!
+        check(recurrenceStore.events(on: crowded).count == 4 && recurrenceController.calendar.eventLayout.hiddenIDs[crowded]?.count == 1, "native month overflow counts overlapping daily spans")
+        let repeatList = DayListWindow(day: crowded, store: recurrenceStore)
+        let listButtons = allViews(repeatList.window.contentView!).compactMap { $0 as? ActionButton }.filter { $0.title == "每日跨日" }
+        check(listButtons.count == 4 && listButtons.allSatisfy { $0.menu?.items.map(\.title) == ["编辑整组", "删除整组"] }, "day list includes occurrences with explicit series actions")
+        try snapshot(recurrenceController.calendar, "recurrence-month")
+        recurrenceController.confirmDelete(dailySpan); pump(0.02)
+        let repeatSheet = recurrenceController.panel.attachedSheet!
+        check(allViews(repeatSheet.contentView!).compactMap { $0 as? NSTextField }.contains { $0.stringValue == "删除整组重复日程？" }, "delete confirmation states whole series")
+        button(repeatSheet, "取消").performClick(nil); pump()
+        check(recurrenceStore.events.contains { $0.id == dailySpan.id }, "cancel series delete preserves source")
+        recurrenceController.confirmDelete(dailySpan); pump(0.02)
+        button(recurrenceController.panel.attachedSheet!, "删除").performClick(nil); pump()
+        check(recurrenceStore.events(on: crowded).isEmpty, "confirmed series deletion removes future occurrences")
+        let futureOccurrence = recurrenceStore.events(on: CivilDate(key: "2025-02-28")!).first!
+        recurrenceController.edit(event: futureOccurrence, day: futureOccurrence.startDate)
+        recurrenceController.editor!.recurrenceButton.selectItem(withTitle: "不重复")
+        recurrenceController.editor!.save()
+        check(recurrenceStore.events(on: futureOccurrence.startDate).isEmpty && recurrenceStore.events(on: anchorDate).count == 1, "turn off recurrence keeps original only")
+        recurrenceController.close(); recurrenceController.trigger.orderOut(nil)
         print("PASS: \(count) native assertions. Controller/view-handler tests, not physical mouse or monitor tests.")
     }
 }

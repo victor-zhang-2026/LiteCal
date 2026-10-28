@@ -6,5 +6,6 @@ mkdir -p build
 sources=(Sources/LiteCal/*.swift)
 sources=(${sources:#*/main.swift})
 swiftc -sdk "$sdk" -swift-version 5 "${sources[@]}" Tests/NativeTests.swift -o build/native-tests
-mkdir -p qa/v1.1
-build/native-tests "$PWD/qa/v1.1"
+output_dir="${LITECAL_NATIVE_QA_DIR:-$PWD/qa/v1.2}"
+mkdir -p "$output_dir"
+build/native-tests "$output_dir"

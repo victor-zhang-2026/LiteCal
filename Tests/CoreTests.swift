@@ -88,7 +88,7 @@ import CoreGraphics
     check(migrated.didMigrate && migrated.loadError == nil, "schema 1 migrates successfully")
     check(try Data(contentsOf: migrated.migrationBackup) == legacyData, "byte-for-byte immutable migration backup")
     check(migrated.events == (try EventStore.decode(legacyData)).events, "all legacy fields preserved")
-    check(try EventStore.decode(Data(contentsOf: legacyFile)).schemaVersion == 2, "upgraded schema persisted")
+    check(try EventStore.decode(Data(contentsOf: legacyFile)).schemaVersion == 3, "upgraded schema persisted")
     check(!EventStore(directory: legacyRoot).didMigrate, "migration idempotent on restart")
     let multi = try migrated.save(title: "跨年三日", startDate: day("2026-12-31"), endDate: day("2027-01-02"))
     check(multi.duration == 2 && migrated.events(on: day("2027-01-01")).contains(multi), "inclusive three-day membership")
@@ -113,6 +113,77 @@ import CoreGraphics
     let blocked = EventStore(directory: blockedRoot)
     check(blocked.loadError != nil && !blocked.didMigrate, "backup failure blocks migration")
     check(try Data(contentsOf: blocked.file) == legacyData, "failed migration preserves original")
+    // Fixed-frequency recurrence: original anchors, inclusive spans, bounded expansion.
+    let repeatStore = EventStore(directory: root.appendingPathComponent("recurrence"))
+    let daily = try repeatStore.save(title: "每日", date: day("2026-12-30"), recurrence: .daily)
+    check(daily.occurrences(from: day("2026-12-29"), through: day("2027-01-02")).map(\.startDate) == ["2026-12-30", "2026-12-31", "2027-01-01", "2027-01-02"].map(day), "daily crosses year and never repeats before anchor")
+    let weekly = try repeatStore.save(title: "每周跨日", startDate: day("2026-12-30"), endDate: day("2027-01-01"), recurrence: .weekly)
+    let weeklyItems = weekly.occurrences(from: day("2027-01-01"), through: day("2027-01-14"))
+    check(weeklyItems.map(\.startDate) == ["2026-12-30", "2027-01-06", "2027-01-13"].map(day) && weeklyItems.allSatisfy { $0.duration == 2 }, "weekly retains duration and includes earlier overlapping start")
+    let monthly = try repeatStore.save(title: "月末", date: day("2024-01-31"), recurrence: .monthly)
+    check(monthly.occurrences(from: day("2024-01-01"), through: day("2024-05-31")).map(\.startDate) == ["2024-01-31", "2024-02-29", "2024-03-31", "2024-04-30", "2024-05-31"].map(day), "month-end clamps without anchor drift")
+    check(monthly.occurrences(from: day("2025-02-01"), through: day("2025-02-28")).map(\.startDate) == [day("2025-02-28")], "non-leap month clamps")
+    let yearly = try repeatStore.save(title: "闰日", date: day("2024-02-29"), recurrence: .yearly)
+    check(yearly.occurrences(from: day("2024-01-01"), through: day("2028-12-31")).map(\.startDate) == ["2024-02-29", "2025-02-28", "2026-02-28", "2027-02-28", "2028-02-29"].map(day), "annual leap-day returns to original anchor")
+    check(EventStore(directory: repeatStore.directory).events.map(\.recurrence) == [.daily, .weekly, .monthly, .yearly], "all frequencies persist on restart")
+    try repeatStore.move(id: monthly.id, by: 1)
+    check(repeatStore.events.first { $0.id == monthly.id }!.startDate == day("2024-02-01") && repeatStore.events.first { $0.id == monthly.id }!.recurrence == .monthly, "drag shifts series anchor and preserves frequency")
+    try repeatStore.save(id: yearly.id, title: yearly.title, date: yearly.startDate, recurrence: RepeatFrequency.none)
+    check(repeatStore.events(on: day("2028-02-29")).allSatisfy { $0.id != yearly.id }, "turning repetition off removes derived occurrences")
+    try repeatStore.delete(id: daily.id)
+    check(repeatStore.events(on: day("2027-01-02")).allSatisfy { $0.id != daily.id }, "delete removes entire series")
+    var overlapping = daily; overlapping.endDate = daily.startDate.adding(days: 3)
+    let overlapDay = day("2027-01-02"), overlapGrid = overlapDay.monthDays
+    let overlapItems = overlapping.occurrences(from: overlapGrid.first!, through: overlapGrid.last!)
+    check(overlapping.occurrences(from: overlapDay, through: overlapDay).count == 4, "daily multiday occurrences overlap independently")
+    check(Set(overlapItems.map(\.occurrenceKey)).count == overlapItems.count, "each occurrence has distinct render identity")
+    let overlapLayout = MonthEventLayout.calculate(days: overlapGrid, events: overlapItems)
+    let overlapIndex = overlapGrid.firstIndex(of: overlapDay)!
+    let overlapSegments = overlapLayout.segments.filter { $0.week == overlapIndex / 7 && $0.firstColumn <= overlapIndex % 7 && $0.lastColumn >= overlapIndex % 7 }
+    check(overlapSegments.count == 4 && Set(overlapSegments.map(\.lane)).count == 4 && overlapLayout.hiddenIDs[overlapDay]?.count == 1, "overlapping series renders separate lanes and exact overflow")
+    check(overlapItems.first!.isPast(today: day("2027-02-01")), "history styling uses occurrence end")
+    for frequency in RepeatFrequency.allCases where frequency != .none {
+        var edge = daily; edge.startDate = day("9999-12-30"); edge.endDate = day("9999-12-31"); edge.recurrence = frequency
+        check(edge.occurrences(from: day("9999-12-01"), through: day("9999-12-31")).count == 1, "upper date bound terminates safely for \(frequency)")
+        var ancient = daily; ancient.startDate = day("0001-01-01"); ancient.endDate = ancient.startDate; ancient.recurrence = frequency
+        check(!ancient.occurrences(from: day("9998-01-01"), through: day("9998-12-31")).isEmpty, "distant queries jump to window for \(frequency)")
+        check(ancient.occurrences(from: day("0001-01-01"), through: day("0001-01-01")).count == 1, "lower bound safe for \(frequency)")
+    }
+    // Compare narrow-window expansion with an independently filtered wider expansion.
+    for frequency in RepeatFrequency.allCases {
+        var fixture = monthly; fixture.recurrence = frequency; fixture.endDate = fixture.startDate.adding(days: 40)
+        let wide = fixture.occurrences(from: fixture.startDate, through: day("2028-12-31"))
+        for offset in stride(from: 0, through: 1700, by: 17) {
+            let first = fixture.startDate.adding(days: offset), last = first.adding(days: 6)
+            check(fixture.occurrences(from: first, through: last) == wide.filter { $0.startDate <= last && $0.endDate >= first }, "narrow expansion retains overlapping occurrences for \(frequency)")
+        }
+    }
+    // Schema 2 migrates with an immutable backup; older apps reject schema 3.
+    let schema2Root = root.appendingPathComponent("schema2")
+    try FileManager.default.createDirectory(at: schema2Root, withIntermediateDirectories: true)
+    var oldJSON = try JSONSerialization.jsonObject(with: EventStore.encode([monthly])) as! [String: Any]
+    oldJSON["schemaVersion"] = 2
+    var oldEvents = oldJSON["events"] as! [[String: Any]]; oldEvents[0].removeValue(forKey: "recurrence"); oldJSON["events"] = oldEvents
+    let oldData = try JSONSerialization.data(withJSONObject: oldJSON)
+    let oldFile = schema2Root.appendingPathComponent("events.json"), oldBackup = schema2Root.appendingPathComponent("events.schema2.backup.json")
+    try oldData.write(to: oldFile)
+    let migrated2 = EventStore(directory: schema2Root)
+    check(migrated2.didMigrate && migrated2.events.first?.recurrence == RepeatFrequency.none, "old events default to no repetition")
+    check(try Data(contentsOf: oldBackup) == oldData, "schema 2 backup exact bytes")
+    check(migrated2.events.first?.id == monthly.id && migrated2.events.first?.startDate == monthly.startDate, "schema 2 preserves source fields")
+    check(!EventStore(directory: schema2Root).didMigrate, "schema 3 reload does not migrate again")
+    oldEvents[0]["title"] = "another source"; oldJSON["events"] = oldEvents
+    try JSONSerialization.data(withJSONObject: oldJSON).write(to: oldFile)
+    check(EventStore(directory: schema2Root).didMigrate, "different old source still migrates")
+    check(try Data(contentsOf: oldBackup) == oldData, "existing schema 2 backup never overwritten")
+    let blocked2Root = root.appendingPathComponent("blocked-schema2")
+    try FileManager.default.createDirectory(at: blocked2Root.appendingPathComponent("events.schema2.backup.json"), withIntermediateDirectories: true)
+    try oldData.write(to: blocked2Root.appendingPathComponent("events.json"))
+    let blocked2 = EventStore(directory: blocked2Root)
+    check(try blocked2.loadError != nil && Data(contentsOf: blocked2.file) == oldData, "schema 2 backup failure preserves original")
+    oldEvents[0]["recurrence"] = "custom"; oldJSON["schemaVersion"] = 3; oldJSON["events"] = oldEvents
+    do { _ = try EventStore.decode(JSONSerialization.data(withJSONObject: oldJSON)); fatalError("unknown frequency accepted") } catch { checks += 1 }
+
     // Deterministic overlapping spans, including events crossing the whole visible grid.
     for monthKey in ["2021-02-01", "2026-03-01", "2026-10-01", "2026-12-01", "2027-01-01"] {
         let days = day(monthKey).monthDays
@@ -144,7 +215,7 @@ import CoreGraphics
     check(busyLayout.hiddenIDs[spanStart] == nil, "empty day does not unnecessarily hide spanning event")
     for visible in screens { for x in [visible.minX, visible.midX, visible.maxX - 1] { for y in [visible.minY, visible.midY, visible.maxY - 1] {
         let anchor = CGRect(x: x, y: y, width: 1, height: 1)
-        check(visible.contains(Placement.overlay(anchor: anchor, size: CGSize(width: 344, height: 252), visible: visible)), "anchored editor stays on screen")
+        check(visible.contains(Placement.overlay(anchor: anchor, size: CGSize(width: 344, height: 314), visible: visible)), "anchored editor stays on screen")
     } } }
     print("PASS: \(checks) assertions; 2412 months; lunar fixtures; civil dates; persistence and failures; display geometry. Isolated data: \(root.path)")
  }

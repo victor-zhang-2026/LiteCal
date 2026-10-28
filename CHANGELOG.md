@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.0 — 2026-10-28
+
+- 新增固定重复：不重复、每天、每周、每月、每年；新增和编辑共用。
+- 月末与闰日按目标月份最后一天兼容，后续仍沿用原始日期；跨日事项保留天数。
+- 重复事项支持整组编辑、移动和确认删除；月历、历史弱化与溢出列表显示对应发生日期。
+- schema 1/2 安全备份后升级为 schema 3，原有事项默认不重复。
+- Daily, weekly, monthly and yearly recurrence; whole-series actions; safe legacy migration. No custom repeat intervals or exceptions.
+- Validated with 12,304 core assertions, 310 native assertions, Debug/Release builds and isolated desktop create/next-month/edit checks.
+
 ## 1.1.0 — 2026-10-22
 
 First public release, based on accepted local build 4.

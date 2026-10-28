@@ -98,14 +98,14 @@ final class FloatingController: NSObject {
         guard allowsEventInteraction, !eventDragActive else { return }
         closeWork?.cancel(); menuActive = true
         let menu = NSMenu()
-        menu.addItem(ClosureMenuItem(title: "编辑") { [weak self] in self?.edit(event: item, day: item.startDate) })
-        menu.addItem(ClosureMenuItem(title: "删除") { [weak self] in self?.confirmDelete(item) })
+        menu.addItem(ClosureMenuItem(title: item.recurrence == .none ? "编辑" : "编辑整组") { [weak self] in self?.edit(event: item, day: item.startDate) })
+        menu.addItem(ClosureMenuItem(title: item.recurrence == .none ? "删除" : "删除整组") { [weak self] in self?.confirmDelete(item) })
         NSMenu.popUpContextMenu(menu, with: event, for: view)
         menuActive = false; scheduleClose()
     }
     func confirmDelete(_ item: CalendarEvent) {
         guard !confirmationActive else { return }; confirmationActive = true; closeWork?.cancel()
-        let alert = NSAlert(); alert.messageText = "删除这条事项？"; alert.informativeText = item.title
+        let alert = NSAlert(); alert.messageText = item.recurrence == .none ? "删除这条事项？" : "删除整组重复日程？"; alert.informativeText = item.title + (item.recurrence == .none ? "" : "\n将删除这组日程的所有重复事项。")
         alert.alertStyle = .warning; alert.addButton(withTitle: "取消"); alert.addButton(withTitle: "删除")
         alert.buttons[1].hasDestructiveAction = true
         alert.beginSheetModal(for: editor?.window ?? dayList?.window ?? panel) { [weak self] response in
