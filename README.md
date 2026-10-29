@@ -2,32 +2,35 @@
 
 **A calendar, one hover away.**
 
-鼠标移到屏幕边缘，一眼看清整月安排。原生 macOS 悬浮日历，本地保存、无需账号、离线可用。
+鼠标移到屏幕边缘，一眼看清本周或整月安排。原生 macOS 悬浮日历，本地保存、无需账号、离线可用。
 
-A native floating month calendar for macOS. Hover to see your month, capture a plan, and return to work. Local storage, no account, fully offline.
+A native floating calendar for macOS. Hover to see your week or month, capture a plan, and return to work. Local storage, no account, fully offline.
 
-[下载 / Download 1.2.0](https://github.com/victor-zhang-2026/LiteCal/releases/download/v1.2.0/LiteCal-1.2.0-macOS-arm64.zip) · [发布说明 / Release notes](https://github.com/victor-zhang-2026/LiteCal/releases/tag/v1.2.0) · [反馈 / Issues](https://github.com/victor-zhang-2026/LiteCal/issues)
+[下载 / Download 1.2.1](https://github.com/victor-zhang-2026/LiteCal/releases/download/v1.2.1/LiteCal-1.2.1-macOS-arm64.zip) · [发布说明 / Release notes](https://github.com/victor-zhang-2026/LiteCal/releases/tag/v1.2.1) · [反馈 / Issues](https://github.com/victor-zhang-2026/LiteCal/issues)
 
 ![LiteCal 整月日历，使用虚构演示事项](docs/images/calendar.png)
+
+![LiteCal 紧凑周视图，使用虚构演示事项](docs/images/week.png)
 
 ## 功能 / Features
 
 - **随时查看**：移入悬浮球展开；预览时移出收起。点击月历后保持打开，点击外部再收起。
 - **整月安排**：周一至周日、公历与农历；每个日期直接显示三行事项，更多显示 `+N`。
+- **紧凑周历**：顶部「月 / 周」平滑切换，周一至周日七列，按事项数量自适应高度；记住上次选择。
 - **快速记录**：双击空白日期新增，或拖过几天创建连续事项；单击已有事项编辑，右键编辑或确认删除。
 - **固定重复**：不重复、每天、每周、每月、每年；新增与编辑使用同一组选项。
 - **连续多日**：横条跨日期显示，跨周分段；拖动整段平移，持续天数保持不变。
-- **轻松定位**：左右方向键切月；点击年月跳转年份和月份；「今天」返回当前月。
+- **轻松定位**：左右方向键按当前模式切月或切周；月视图点击年月快速跳转；「今天」返回当前月或今天所在周。
 - **自然聚焦**：已结束事项自动变浅，今天与未来事项保持清晰；历史事项仍可操作。
 - **本地离线**：无账号、服务器、同步、广告、遥测或系统日历读取。
 
-Hover to open; click to keep the calendar visible until you click elsewhere. Read three event rows per date, open overflow with `+N`, and see Gregorian and Chinese lunar dates. Double-click to create, drag across dates for a range, edit by clicking, and move an event while keeping its duration. Arrow keys and the month picker make navigation quick. Past events fade automatically. Repeat events daily, weekly, monthly or yearly with a single selection.
+Hover to open; click to keep the calendar visible until you click elsewhere. Read three event rows per date, open overflow with `+N`, and see Gregorian and Chinese lunar dates. Double-click to create, drag across dates for a range, edit by clicking, and move an event while keeping its duration. Switch between the unchanged month grid and a compact seven-column week with adaptive height. The window keeps its top edge and remembers your view. Arrow keys navigate months or weeks; the month picker remains available in month mode. Past events fade automatically. Repeat events daily, weekly, monthly or yearly with a single selection.
 
 **Current UI: Simplified Chinese.** English product documentation does not imply an English interface. This release is for Apple silicon Macs; there is no Windows or Intel binary.
 
 ## 安装 / Install
 
-1. 下载上方的 `LiteCal-1.2.0-macOS-arm64.zip`，解压并将 `LiteCal.app` 拖入「应用程序」。GitHub 的 `Source code` 为源码，不是安装包。
+1. 下载上方的 `LiteCal-1.2.1-macOS-arm64.zip`，解压并将 `LiteCal.app` 拖入「应用程序」。GitHub 的 `Source code` 为源码，不是安装包。
 2. 如已有 LiteCal 在运行，先右键悬浮球退出，再打开新版。日程文件会继续保留。
 3. 当前版本使用 ad-hoc 本地签名，未经过 Developer ID 签名或 Apple 公证。确认来自本仓库并核对 Release 的 `SHA256SUMS` 后，如被系统拦截，按 [Apple 安装说明](https://support.apple.com/en-us/102445)在「系统设置 → 隐私与安全性」中选择「仍要打开」。
 
@@ -41,14 +44,15 @@ Deployment target: macOS 13+. Tested on Apple silicon / macOS 27.0.1. Older syst
 
 | 操作 | 结果 |
 | --- | --- |
-| 鼠标移入悬浮球 | 展开整月日历 |
+| 鼠标移入悬浮球 | 展开日历，恢复上次选择的月 / 周视图 |
+| 点击「月 / 周」 | 同宽平滑切换；周视图按事项数量调整高度 |
 | 点击月历 / 点击外部 | 保持展开 / 收起；编辑草稿受保护 |
 | 双击空白日期 / 拖选日期范围 | 新增单日 / 多日事项 |
 | 单击事项 / 右键事项 | 编辑 / 编辑或确认删除 |
 | 拖动事项 | 移动日期，多日事项保持持续天数 |
 | 选择重复频率 | 不重复、每天、每周、每月、每年 |
 | 点击起止日期 | 紧凑日期网格；点选对应端点或拖选整段范围 |
-| ← / →、点击年月、「今天」 | 切月、快速跳转、回到当前月 |
+| ← / →、点击年月、「今天」 | 按模式切月 / 周；月视图年月跳转；返回今天所在月 / 周 |
 | Enter / Esc | 保存 / 取消当前选择或编辑 |
 | 右键悬浮球、⌘Q | 退出确认；标题栏 × 只收起 |
 
@@ -85,9 +89,10 @@ If several SDKs are installed, set `LITECAL_MACOS_SDK` to one compatible with yo
 ```sh
 ./scripts/test.sh
 ./scripts/test-native.sh
+./scripts/test-week.sh
 ```
 
-Core tests cover civil dates, lunar dates, persistence/migration and layout. Native tests show temporary windows and use isolated test data. The release passed 12,304 core assertions and 310 native assertions; these do not replace physical multi-monitor or manual interaction testing. See [release validation](release/v1.2.0/MANIFEST.md).
+Core tests cover civil dates, lunar dates, persistence/migration and layout. Native tests show temporary windows and use isolated test data. The release passed 16,690 core assertions, 310 existing native assertions and 716 week-view assertions, including animation-frame sampling. Actual desktop checks covered create/edit/delete, single-day and multi-day dragging, view switching and process-restart restoration. Physical multi-monitor/scaling and older systems remain outside full coverage. See [release validation](release/v1.2.1/MANIFEST.md).
 
 ```text
 Sources/LiteCal/  App lifecycle, floating panels, calendar, editor and storage

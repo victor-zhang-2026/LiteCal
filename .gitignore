@@ -19,3 +19,6 @@ docs/TEST-REPORT*.md
 
 release/v1.2.0/*.zip
 release/v1.2.0/download-verification/
+
+release/v1.2.1/*.zip
+release/v1.2.1/download-verification/

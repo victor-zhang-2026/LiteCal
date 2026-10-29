@@ -2,7 +2,7 @@
 
 ## 安装
 
-从 [v1.2.0 Release](https://github.com/victor-zhang-2026/LiteCal/releases/tag/v1.2.0) 下载 `LiteCal-1.2.0-macOS-arm64.zip`，解压，将 App 拖入「应用程序」。macOS 13+ 部署目标，Apple silicon；实际测试环境 macOS 27.0.1。当前界面为简体中文。
+从 [v1.2.1 Release](https://github.com/victor-zhang-2026/LiteCal/releases/tag/v1.2.1) 下载 `LiteCal-1.2.1-macOS-arm64.zip`，解压，将 App 拖入「应用程序」。macOS 13+ 部署目标，Apple silicon；实际测试环境 macOS 27.0.1。当前界面为简体中文。
 
 发布包采用 ad-hoc 本地签名，尚未 Developer ID 签名/公证。如系统阻止打开，先确认来自本仓库并核对 SHA-256，然后按 [Apple 官方指南](https://support.apple.com/en-us/102445)使用「系统设置 → 隐私与安全性 → 仍要打开」。无需关闭系统安全保护。
 
@@ -13,12 +13,14 @@ Download the app ZIP from the Release, unzip, and move LiteCal to Applications. 
 在 ZIP 所在目录运行以下命令，并与同一 Release 的 `SHA256SUMS` 对照：
 
 ```sh
-shasum -a 256 LiteCal-1.2.0-macOS-arm64.zip
+shasum -a 256 LiteCal-1.2.1-macOS-arm64.zip
 ```
 
 ## 升级
 
 先右键悬浮球退出，再替换 App。数据保存在应用包之外，不会因为替换 App 而删除。不要同时打开两个使用相同数据目录的实例。
+
+1.2.0 → 1.2.1 沿用 schema 3，无新增数据迁移；「月 / 周」选择保存在用户偏好中，首次默认月视图。
 
 Quit the existing instance before replacing the app. Data is outside the app bundle and remains in place.
 

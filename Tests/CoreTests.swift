@@ -20,6 +20,15 @@ import CoreGraphics
         check(days.filter { $0.month == month }.count == CivilDate.calendar.range(of: .day, in: .month, for: target.date)!.count, "all month days exactly once")
         check(Set(days).count == days.count, "no duplicate dates")
     }}
+    for offset in 0..<1461 {
+        let value = day("2023-01-01").adding(days: offset), week = day("2023-01-01").adding(days: offset).weekDays
+        check(week.count == 7 && Set(week).count == 7, "week has seven unique days")
+        check(CivilDate.calendar.component(.weekday, from: week[0].date) == 2, "week starts Monday")
+        check(week.contains(value) && week[0].days(until: week[6]) == 6, "week contains anchor and six consecutive days")
+    }
+    check(day("2024-02-29").weekStart == day("2024-02-26"), "leap-day week")
+    check(day("2026-11-01").weekStart == day("2026-10-26"), "Sunday belongs to prior-month Monday")
+    check(day("2027-01-01").weekTitle == "2026年12月28日–2027年1月3日", "cross-year week title")
     check(LunarCalendar.label(for: day("2024-02-10")) == "正月", "Chinese New Year 2024")
     check(LunarCalendar.label(for: day("2024-02-24")) == "十五", "Lantern Festival 2024")
     check(LunarCalendar.label(for: day("2023-03-22")) == "闰二月", "leap lunar month")

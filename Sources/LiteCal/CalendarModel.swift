@@ -35,6 +35,13 @@ struct CivilDate: Hashable, Comparable, Codable, CustomStringConvertible {
     func days(until other: Self) -> Int { Self.calendar.dateComponents([.day], from: date, to: other.date).day! }
     var monthStart: Self { Self(year: year, month: month, day: 1) }
     func adding(months: Int) -> Self { Self(Self.calendar.date(byAdding: .month, value: months, to: monthStart.date)!, timeZone: TimeZone(secondsFromGMT: 0)!) }
+    var weekStart: Self { adding(days: -((Self.calendar.component(.weekday, from: date) + 5) % 7)) }
+    var weekDays: [Self] { (0..<7).map { weekStart.adding(days: $0) } }
+    var weekTitle: String {
+        let first = weekStart, last = first.adding(days: 6)
+        if first.year != last.year { return "\(first.year)年\(first.month)月\(first.day)日–\(last.year)年\(last.month)月\(last.day)日" }
+        return "\(first.month)月\(first.day)日–\(last.month)月\(last.day)日"
+    }
     var monthDays: [Self] {
         let start = monthStart
         let leading = (Self.calendar.component(.weekday, from: start.date) + 5) % 7

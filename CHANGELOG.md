@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.1 — 2026-10-29
+
+- 新增紧凑七列周视图及「月 / 周」切换，记忆上次选择，按事项数量自适应高度。
+- 选中背景、日期格与窗口高度使用 0.23 秒原生过渡，窗口顶部及宽度保持稳定。
+- 支持上一周 / 下一周、今天、跨年日期范围及月周日期衔接。
+- 复用原有日程操作和跨日布局；按目标视图重算截断、延续、占用行，保持原始数据及 schema 3。
+- 月历网格四种尺寸与原版逐像素一致；16,690 核心、310 原有原生、716 周专项断言和实际桌面操作通过。
+- Compact week view with animated month/week switching, adaptive height, view persistence and shared event interactions. No data-format changes.
+
 ## 1.2.0 — 2026-10-28
 
 - 新增固定重复：不重复、每天、每周、每月、每年；新增和编辑共用。

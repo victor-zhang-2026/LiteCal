@@ -26,8 +26,8 @@ final class FloatingController: NSObject {
     private var dayList: DayListWindow?
     private var dateTimer: Timer?
     private var menuActive = false
-    private var interactionLocked: Bool { editor != nil || dayList != nil || menuActive || monthPicker != nil || eventDragActive || confirmationActive }
-    var allowsEventInteraction: Bool { editor == nil && monthPicker == nil && !confirmationActive }
+    private var interactionLocked: Bool { editor != nil || dayList != nil || menuActive || monthPicker != nil || eventDragActive || confirmationActive || calendar.isTransitioning }
+    var allowsEventInteraction: Bool { editor == nil && monthPicker == nil && !confirmationActive && !calendar.isTransitioning }
     init(store: EventStore, defaults: UserDefaults) {
         self.store = store; self.defaults = defaults
         trigger = CalendarPanel(contentRect: NSRect(x: 0, y: 0, width: 48, height: 48), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -43,6 +43,7 @@ final class FloatingController: NSObject {
         trigger.hasShadow = false; trigger.becomesKeyOnlyIfNeeded = true
         let ball = TriggerView(frame: NSRect(x: 0, y: 0, width: 48, height: 48)); ball.controller = self; trigger.contentView = ball
         panel.hasShadow = true; calendar.controller = self; panel.contentView = calendar
+        calendar.restoreDisplayMode(CalendarDisplayMode(rawValue: defaults.string(forKey: "calendarDisplayMode") ?? "month") ?? .month)
         store.onChange = { [weak self] in self?.calendar.reload(); self?.dayList?.reload() }
         NotificationCenter.default.addObserver(self, selector: #selector(screensChanged), name: NSApplication.didChangeScreenParametersNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(dayChanged), name: .NSCalendarDayChanged, object: nil)
@@ -135,9 +136,26 @@ final class FloatingController: NSObject {
     }
     private func positionPanel() {
         guard let screen = screen() else { return }
-        panel.setFrame(Placement.panel(trigger: trigger.frame, visible: screen.visibleFrame), display: true)
+        var frame = Placement.panel(trigger: trigger.frame, visible: screen.visibleFrame)
+        if calendar.displayMode == .week {
+            let height = min(frame.height, calendar.preferredWeekHeight)
+            frame.origin.y = frame.maxY - height; frame.size.height = height
+        }
+        panel.setFrame(frame, display: true)
         trigger.orderFrontRegardless()
         repositionChildren()
+    }
+    var availableCalendarHeight: CGFloat {
+        screen().map { Placement.panel(trigger: trigger.frame, visible: $0.visibleFrame).height } ?? 760
+    }
+    func calendarFrameForCurrentMode() -> NSRect {
+        guard let screen = screen() else { return panel.frame }
+        let base = Placement.panel(trigger: trigger.frame, visible: screen.visibleFrame)
+        let height = calendar.displayMode == .week ? min(base.height, calendar.preferredWeekHeight) : base.height
+        // Both modes use the full calendar's top edge, including after reopening
+        // a remembered week. Switching never repositions the floating trigger.
+        let top = isOpen ? panel.frame.maxY : base.maxY
+        return NSRect(x: isOpen ? panel.frame.minX : base.minX, y: top - height, width: base.width, height: height)
     }
     func open() {
         closeWork?.cancel()

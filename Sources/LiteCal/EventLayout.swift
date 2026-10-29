@@ -14,7 +14,7 @@ struct MonthEventLayout {
     let segments: [EventSegment]
     let hiddenIDs: [CivilDate: [UUID]]
     static let visibleLanes = 3
-    static func calculate(days: [CivilDate], events: [CalendarEvent]) -> Self {
+    static func calculate(days: [CivilDate], events: [CalendarEvent], visibleLanes: Int = Self.visibleLanes) -> Self {
         guard let first = days.first, let last = days.last, days.count % 7 == 0 else { return Self(segments: [], hiddenIDs: [:]) }
         let ordered = events.enumerated().filter { $0.element.endDate >= first && $0.element.startDate <= last }.sorted {
             // Reserve continuous rows for spans before filling individual date slots.
