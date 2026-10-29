@@ -6,7 +6,7 @@
 
 A native floating calendar for macOS. Hover to see your week or month, capture a plan, and return to work. Local storage, no account, fully offline.
 
-[下载 / Download 1.2.1](https://github.com/victor-zhang-2026/LiteCal/releases/download/v1.2.1/LiteCal-1.2.1-macOS-arm64.zip) · [发布说明 / Release notes](https://github.com/victor-zhang-2026/LiteCal/releases/tag/v1.2.1) · [反馈 / Issues](https://github.com/victor-zhang-2026/LiteCal/issues)
+[下载 / Download 1.2.2](https://github.com/victor-zhang-2026/LiteCal/releases/download/v1.2.2/LiteCal-1.2.2-macOS-arm64.zip) · [发布说明 / Release notes](https://github.com/victor-zhang-2026/LiteCal/releases/tag/v1.2.2) · [反馈 / Issues](https://github.com/victor-zhang-2026/LiteCal/issues)
 
 ![LiteCal 整月日历，使用虚构演示事项](docs/images/calendar.png)
 
@@ -30,7 +30,7 @@ Hover to open; click to keep the calendar visible until you click elsewhere. Rea
 
 ## 安装 / Install
 
-1. 下载上方的 `LiteCal-1.2.1-macOS-arm64.zip`，解压并将 `LiteCal.app` 拖入「应用程序」。GitHub 的 `Source code` 为源码，不是安装包。
+1. 下载上方的 `LiteCal-1.2.2-macOS-arm64.zip`，解压并将 `LiteCal.app` 拖入「应用程序」。GitHub 的 `Source code` 为源码，不是安装包。
 2. 如已有 LiteCal 在运行，先右键悬浮球退出，再打开新版。日程文件会继续保留。
 3. 当前版本使用 ad-hoc 本地签名，未经过 Developer ID 签名或 Apple 公证。确认来自本仓库并核对 Release 的 `SHA256SUMS` 后，如被系统拦截，按 [Apple 安装说明](https://support.apple.com/en-us/102445)在「系统设置 → 隐私与安全性」中选择「仍要打开」。
 
@@ -92,7 +92,7 @@ If several SDKs are installed, set `LITECAL_MACOS_SDK` to one compatible with yo
 ./scripts/test-week.sh
 ```
 
-Core tests cover civil dates, lunar dates, persistence/migration and layout. Native tests show temporary windows and use isolated test data. The release passed 16,690 core assertions, 310 existing native assertions and 716 week-view assertions, including animation-frame sampling. Actual desktop checks covered create/edit/delete, single-day and multi-day dragging, view switching and process-restart restoration. Physical multi-monitor/scaling and older systems remain outside full coverage. See [release validation](release/v1.2.1/MANIFEST.md).
+Core tests cover civil dates, lunar dates, persistence/migration and layout. Native tests show temporary windows and use isolated test data. Version 1.2.1 previously passed 16,690 core assertions, 310 existing native assertions and 716 week-view assertions, including animation-frame sampling. Actual desktop checks covered create/edit/delete, single-day and multi-day dragging, view switching and process-restart restoration. Physical multi-monitor/scaling and older systems remain outside full coverage. See [historical validation](release/v1.2.1/MANIFEST.md) and [current release checks](release/v1.2.2/MANIFEST.md).
 
 ```text
 Sources/LiteCal/  App lifecycle, floating panels, calendar, editor and storage

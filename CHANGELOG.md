@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.2 — 2026-10-29
+
+- 修复合盖、外接屏及屏幕布局切换后的悬浮球错位，按显示器保存相对位置。
+- 悬浮球层级与 LiteTick、LitePark 对齐，拖动经过 Dock 时保持可见。
+- Preserve display-relative floating-ball positions across clamshell and monitor-layout changes. Keep the floating ball above the Dock.
+
 ## 1.2.1 — 2026-10-29
 
 - 新增紧凑七列周视图及「月 / 周」切换，记忆上次选择，按事项数量自适应高度。

@@ -10,6 +10,7 @@ final class FloatingController: NSObject {
     let panel: CalendarPanel
     let calendar: MonthView
     let defaults: UserDefaults
+    private lazy var floatingPlacement = FloatingPlacement(defaults: defaults)
     private(set) var isOpen = false
     private(set) var isPinned = false
     private(set) var isDragging = false
@@ -40,6 +41,7 @@ final class FloatingController: NSObject {
             window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
             window.appearance = NSAppearance(named: .aqua)
         }
+        trigger.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.assistiveTechHighWindow)))
         trigger.hasShadow = false; trigger.becomesKeyOnlyIfNeeded = true
         let ball = TriggerView(frame: NSRect(x: 0, y: 0, width: 48, height: 48)); ball.controller = self; trigger.contentView = ball
         panel.hasShadow = true; calendar.controller = self; panel.contentView = calendar
@@ -64,7 +66,7 @@ final class FloatingController: NSObject {
         globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] _ in
             DispatchQueue.main.async { [weak self] in self?.outsideClicked() }
         }
-        positionTrigger(); trigger.orderFrontRegardless(); scheduleMidnight()
+        positionTrigger(); floatingPlacement.restore(trigger, fallback: trigger.frame.origin); trigger.orderFrontRegardless(); scheduleMidnight()
     }
     deinit {
         for monitor in [keyMonitor, localMouseMonitor, globalMouseMonitor].compactMap({ $0 }) { NSEvent.removeMonitor(monitor) }
@@ -204,6 +206,7 @@ final class FloatingController: NSObject {
     func endDrag() {
         if let screen = screen(pointer: NSEvent.mouseLocation) { trigger.setFrame(Placement.clamp(trigger.frame, to: screen.visibleFrame), display: true) }
         defaults.set(trigger.frame.minX, forKey: "triggerX"); defaults.set(trigger.frame.minY, forKey: "triggerY")
+        floatingPlacement.remember(trigger)
         isDragging = false
         if isOpen { positionPanel() }
         if trigger.frame.contains(NSEvent.mouseLocation) { open() }
@@ -254,9 +257,11 @@ final class FloatingController: NSObject {
     }
     private func repositionChildren() { if let list = dayList { positionChild(list.window) }; positionEditor() }
     @objc private func screensChanged() {
-        guard let screen = screen() else { return }
-        trigger.setFrame(Placement.clamp(trigger.frame, to: screen.visibleFrame), display: true)
-        if isOpen { positionPanel() }; trigger.orderFrontRegardless()
+        floatingPlacement.afterScreenChange { [weak self] in
+            guard let self, !self.isDragging else { return }
+            self.floatingPlacement.restore(self.trigger, fallback: self.trigger.frame.origin)
+            if self.isOpen { self.positionPanel() }; self.trigger.orderFrontRegardless()
+        }
     }
     @objc private func dayChanged() { calendar.reload(); dayList?.reload(); scheduleMidnight() }
     private func scheduleMidnight() {
