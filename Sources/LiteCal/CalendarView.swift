@@ -5,6 +5,9 @@ enum Theme {
     static let ink = NSColor(srgbRed: 0.12, green: 0.13, blue: 0.18, alpha: 1)
     static let muted = NSColor(srgbRed: 0.52, green: 0.52, blue: 0.58, alpha: 1)
     static let line = NSColor(srgbRed: 0.90, green: 0.90, blue: 0.92, alpha: 1)
+    static let weekendFill = NSColor(srgbRed: 241/255, green: 231/255, blue: 239/255, alpha: 1)
+    static let weekendInk = NSColor(srgbRed: 80/255, green: 56/255, blue: 75/255, alpha: 1)
+    static let weekendDivider = NSColor(srgbRed: 195/255, green: 169/255, blue: 188/255, alpha: 1)
     static func label(_ title: String, size: CGFloat = 14, weight: NSFont.Weight = .regular, color: NSColor = ink) -> NSTextField {
         let label = NSTextField(labelWithString: title)
         label.font = .systemFont(ofSize: size, weight: weight); label.textColor = color
@@ -158,8 +161,8 @@ final class MonthView: NSView {
             // click-to-pin monitor. It is still an explicit calendar interaction.
             self?.controller?.pinCalendar(); self?.setDisplayMode($0)
         }
-        for name in ["一", "二", "三", "四", "五", "六", "日"] {
-            let label = Theme.label(name, size: 14, color: Theme.muted); label.alignment = .center; weekdays.append(label); addSubview(label)
+        for (index, name) in ["一", "二", "三", "四", "五", "六", "日"].enumerated() {
+            let label = Theme.label(name, size: 14, weight: index >= 5 ? .semibold : .regular, color: index >= 5 ? Theme.purple : Theme.muted); label.alignment = .center; weekdays.append(label); addSubview(label)
         }
         reload()
     }
@@ -354,8 +357,11 @@ final class MonthView: NSView {
         controller?.setEventDragActive(false)
     }
     override func draw(_ dirtyRect: NSRect) {
+        let weekendX = bounds.width / 7 * 5
+        Theme.weekendFill.setFill(); NSRect(x: weekendX, y: 64, width: bounds.width - weekendX, height: 36).fill()
         Theme.line.setStroke(); let line = NSBezierPath(); line.lineWidth = 0.5
         for y: CGFloat in [64, 100] { line.move(to: NSPoint(x: 0, y: y)); line.line(to: NSPoint(x: bounds.width, y: y)) }; line.stroke()
+        Theme.weekendDivider.setFill(); NSRect(x: weekendX, y: 64, width: 2, height: 36).fill()
     }
     override func updateTrackingAreas() {
         super.updateTrackingAreas(); if let tracking { removeTrackingArea(tracking) }
@@ -366,9 +372,11 @@ final class MonthView: NSView {
 }
 final class DayView: NSView {
     let day: CivilDate, today: CivilDate
+    private var weekday: Int { CivilDate.calendar.component(.weekday, from: day.date) }
+    private var isWeekend: Bool { weekday == 7 || weekday == 1 }
     var isCurrentMonth: Bool { didSet {
-        dateLabel.textColor = day == today ? .white : (!isCurrentMonth ? Theme.muted : (day < today ? NSColor(srgbRed: 0.45, green: 0.43, blue: 0.48, alpha: 1) : Theme.ink))
-        needsDisplay = true
+        dateLabel.textColor = day == today ? .white : (!isCurrentMonth ? Theme.muted : (isWeekend ? Theme.weekendInk : (day < today ? NSColor(srgbRed: 0.45, green: 0.43, blue: 0.48, alpha: 1) : Theme.ink)))
+        needsLayout = true; needsDisplay = true
     } }
     var onNew: (() -> Void)?
     var isDropTarget = false { didSet { needsDisplay = true } }
@@ -384,6 +392,8 @@ final class DayView: NSView {
         dateLabel = Theme.label(String(day.day), size: 19, weight: .medium, color: !isCurrentMonth ? Theme.muted : (past ? NSColor(srgbRed: 0.45, green: 0.43, blue: 0.48, alpha: 1) : Theme.ink))
         lunarLabel = Theme.label(LunarCalendar.label(for: day), size: 12, color: Theme.muted)
         super.init(frame: .zero); addSubview(dateLabel); addSubview(lunarLabel)
+        if day == today { dateLabel.textColor = .white }
+        else if isCurrentMonth && isWeekend { dateLabel.textColor = Theme.weekendInk }
         toolTip = "\(day.description) · 双击空白处新增事项"
         setAccessibilityElement(true); setAccessibilityRole(.group); setAccessibilityLabel(day.description)
     }
@@ -391,14 +401,15 @@ final class DayView: NSView {
     override func layout() {
         super.layout()
         let compact = bounds.height < 126, small = bounds.height < 102, current = day == today
-        dateLabel.font = .systemFont(ofSize: small ? 17 : 19, weight: .medium)
+        dateLabel.font = .systemFont(ofSize: small ? 17 : 19, weight: isWeekend && isCurrentMonth && !current ? .semibold : .medium)
         dateLabel.alignment = current ? .center : .left; if current { dateLabel.textColor = .white }
         dateLabel.frame = NSRect(x: current && small ? 9 : 12, y: small ? 2 : 6, width: 32, height: small ? 22 : 24)
         lunarLabel.frame = NSRect(x: current || compact ? 48 : 13, y: current || compact ? (small ? 7 : 12) : 29, width: bounds.width - (current || compact ? 53 : 22), height: 17)
     }
     override func draw(_ dirtyRect: NSRect) {
-        (day == today ? Theme.purple.withAlphaComponent(0.045) : (isCurrentMonth ? .white : NSColor(white: 0.977, alpha: 1))).setFill(); bounds.fill()
+        (day == today ? Theme.purple.withAlphaComponent(0.045) : (isWeekend ? Theme.weekendFill : (isCurrentMonth ? .white : NSColor(white: 0.977, alpha: 1)))).setFill(); bounds.fill()
         Theme.line.setStroke(); let grid = NSBezierPath(); grid.lineWidth = 0.5; grid.move(to: NSPoint(x: bounds.maxX, y: 0)); grid.line(to: NSPoint(x: bounds.maxX, y: bounds.maxY)); grid.line(to: NSPoint(x: 0, y: bounds.maxY)); grid.stroke()
+        if weekday == 7 { Theme.weekendDivider.setFill(); NSRect(x: 0, y: 0, width: 2, height: bounds.height).fill() }
         if day == today { let d: CGFloat = bounds.height < 102 ? 24 : 30; Theme.purple.setFill(); NSBezierPath(ovalIn: NSRect(x: 12, y: 2, width: d, height: d)).fill() }
         if isDropTarget { Theme.purple.withAlphaComponent(0.09).setFill(); bounds.fill(); Theme.purple.withAlphaComponent(0.65).setStroke(); let p = NSBezierPath(rect: bounds.insetBy(dx: 1, dy: 1)); p.lineWidth = 2; p.stroke() }
     }
