@@ -5,7 +5,8 @@ enum Theme {
     static let ink = NSColor(srgbRed: 0.12, green: 0.13, blue: 0.18, alpha: 1)
     static let muted = NSColor(srgbRed: 0.52, green: 0.52, blue: 0.58, alpha: 1)
     static let line = NSColor(srgbRed: 0.90, green: 0.90, blue: 0.92, alpha: 1)
-    static let weekendFill = NSColor(srgbRed: 241/255, green: 231/255, blue: 239/255, alpha: 1)
+    static let weekdayFill = NSColor(srgbRed: 240/255, green: 239/255, blue: 242/255, alpha: 1)
+    static let weekendFill = NSColor.white
     static let weekendInk = NSColor(srgbRed: 80/255, green: 56/255, blue: 75/255, alpha: 1)
     static let weekendDivider = NSColor(srgbRed: 195/255, green: 169/255, blue: 188/255, alpha: 1)
     static func label(_ title: String, size: CGFloat = 14, weight: NSFont.Weight = .regular, color: NSColor = ink) -> NSTextField {
@@ -358,6 +359,7 @@ final class MonthView: NSView {
     }
     override func draw(_ dirtyRect: NSRect) {
         let weekendX = bounds.width / 7 * 5
+        Theme.weekdayFill.setFill(); NSRect(x: 0, y: 64, width: weekendX, height: 36).fill()
         Theme.weekendFill.setFill(); NSRect(x: weekendX, y: 64, width: bounds.width - weekendX, height: 36).fill()
         Theme.line.setStroke(); let line = NSBezierPath(); line.lineWidth = 0.5
         for y: CGFloat in [64, 100] { line.move(to: NSPoint(x: 0, y: y)); line.line(to: NSPoint(x: bounds.width, y: y)) }; line.stroke()
@@ -407,7 +409,7 @@ final class DayView: NSView {
         lunarLabel.frame = NSRect(x: current || compact ? 48 : 13, y: current || compact ? (small ? 7 : 12) : 29, width: bounds.width - (current || compact ? 53 : 22), height: 17)
     }
     override func draw(_ dirtyRect: NSRect) {
-        (day == today ? Theme.purple.withAlphaComponent(0.045) : (isWeekend ? Theme.weekendFill : (isCurrentMonth ? .white : NSColor(white: 0.977, alpha: 1)))).setFill(); bounds.fill()
+        (day == today ? Theme.purple.withAlphaComponent(0.045) : (isWeekend ? Theme.weekendFill : (isCurrentMonth ? Theme.weekdayFill : NSColor(srgbRed: 233/255, green: 232/255, blue: 236/255, alpha: 1)))).setFill(); bounds.fill()
         Theme.line.setStroke(); let grid = NSBezierPath(); grid.lineWidth = 0.5; grid.move(to: NSPoint(x: bounds.maxX, y: 0)); grid.line(to: NSPoint(x: bounds.maxX, y: bounds.maxY)); grid.line(to: NSPoint(x: 0, y: bounds.maxY)); grid.stroke()
         if weekday == 7 { Theme.weekendDivider.setFill(); NSRect(x: 0, y: 0, width: 2, height: bounds.height).fill() }
         if day == today { let d: CGFloat = bounds.height < 102 ? 24 : 30; Theme.purple.setFill(); NSBezierPath(ovalIn: NSRect(x: 12, y: 2, width: d, height: d)).fill() }
