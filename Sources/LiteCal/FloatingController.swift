@@ -137,13 +137,7 @@ final class FloatingController: NSObject {
         trigger.setFrame(Placement.clamp(saved, to: target.visibleFrame), display: true)
     }
     private func positionPanel() {
-        guard let screen = screen() else { return }
-        var frame = Placement.panel(trigger: trigger.frame, visible: screen.visibleFrame)
-        if calendar.displayMode == .week {
-            let height = min(frame.height, calendar.preferredWeekHeight)
-            frame.origin.y = frame.maxY - height; frame.size.height = height
-        }
-        panel.setFrame(frame, display: true)
+        panel.setFrame(calendarFrameForCurrentMode(), display: true)
         trigger.orderFrontRegardless()
         repositionChildren()
     }
@@ -154,10 +148,9 @@ final class FloatingController: NSObject {
         guard let screen = screen() else { return panel.frame }
         let base = Placement.panel(trigger: trigger.frame, visible: screen.visibleFrame)
         let height = calendar.displayMode == .week ? min(base.height, calendar.preferredWeekHeight) : base.height
-        // Both modes use the full calendar's top edge, including after reopening
-        // a remembered week. Switching never repositions the floating trigger.
-        let top = isOpen ? panel.frame.maxY : base.maxY
-        return NSRect(x: isOpen ? panel.frame.minX : base.minX, y: top - height, width: base.width, height: height)
+        guard calendar.displayMode == .week else { return base }
+        // Use the same ball-relative placement when opening and switching modes.
+        return Placement.clamp(CGRect(x: base.minX, y: trigger.frame.midY - height / 2, width: base.width, height: height), to: screen.visibleFrame, margin: 12)
     }
     func open() {
         closeWork?.cancel()
