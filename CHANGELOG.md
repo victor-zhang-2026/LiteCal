@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.3 — 2026-11-04
+
+- 周视图支持点击标题按整周选择；标题显示年份，选择器仅高亮本月中的今天。
+- 周视图事项字号与对应月份的月视图一致，调整周末明暗层次，并修正周/月视图相对悬浮球的定位。
+- Week-row selection, year in the week title, matching event text size, refined weekend styling and consistent panel placement.
+- 本次未运行功能或界面测试；仅完成构建与发布包核验。
+
 ## 1.2.2 — 2026-10-29
 
 - 修复合盖、外接屏及屏幕布局切换后的悬浮球错位，按显示器保存相对位置。
