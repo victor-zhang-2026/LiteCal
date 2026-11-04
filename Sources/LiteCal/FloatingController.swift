@@ -19,6 +19,7 @@ final class FloatingController: NSObject {
     private(set) var editor: EventEditor?
     private var editorAnchor: NSRect?
     private(set) var monthPicker: MonthJumpPicker?
+    private var weekPicker: WeekSelectionPopover?
     private var eventDragActive = false
     private var confirmationActive = false
     private var keyMonitor: Any?
@@ -27,8 +28,8 @@ final class FloatingController: NSObject {
     private var dayList: DayListWindow?
     private var dateTimer: Timer?
     private var menuActive = false
-    private var interactionLocked: Bool { editor != nil || dayList != nil || menuActive || monthPicker != nil || eventDragActive || confirmationActive || calendar.isTransitioning }
-    var allowsEventInteraction: Bool { editor == nil && monthPicker == nil && !confirmationActive && !calendar.isTransitioning }
+    private var interactionLocked: Bool { editor != nil || dayList != nil || menuActive || monthPicker != nil || weekPicker != nil || eventDragActive || confirmationActive || calendar.isTransitioning }
+    var allowsEventInteraction: Bool { editor == nil && monthPicker == nil && weekPicker == nil && !confirmationActive && !calendar.isTransitioning }
     init(store: EventStore, defaults: UserDefaults) {
         self.store = store; self.defaults = defaults
         trigger = CalendarPanel(contentRect: NSRect(x: 0, y: 0, width: 48, height: 48), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -57,7 +58,7 @@ final class FloatingController: NSObject {
         localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] event in
             guard let self else { return event }
             if event.window === self.panel { self.pinCalendar() }
-            else if event.window !== self.trigger && event.window !== self.editor?.window && event.window !== self.dayList?.window && event.window !== self.monthPicker?.popover.contentViewController?.view.window && event.window !== self.editor?.dateSelector?.grid.window {
+            else if event.window !== self.trigger && event.window !== self.editor?.window && event.window !== self.dayList?.window && event.window !== self.monthPicker?.popover.contentViewController?.view.window && event.window !== self.weekPicker?.grid.window && event.window !== self.editor?.dateSelector?.grid.window {
                 // Let transient popovers process the outside click before checking locks.
                 DispatchQueue.main.async { [weak self] in self?.outsideClicked() }
             }
@@ -75,9 +76,10 @@ final class FloatingController: NSObject {
     func pinCalendar() { guard isOpen else { return }; isPinned = true; closeWork?.cancel() }
     func outsideClicked() {
         guard !isDragging, editor == nil, dayList == nil, !menuActive, !eventDragActive, !confirmationActive else { return }
-        // A month selector has no unsaved draft. Close it explicitly so dismissal
+        // Calendar selectors have no unsaved draft. Close them explicitly so dismissal
         // does not depend on the ordering of global mouse and popover callbacks.
         let picker = monthPicker; monthPicker = nil; picker?.popover.performClose(nil)
+        let weekSelector = weekPicker; weekPicker = nil; weekSelector?.close()
         close()
     }
     func handleCalendarKey(_ event: NSEvent) -> Bool {
@@ -95,6 +97,16 @@ final class FloatingController: NSObject {
         let picker = MonthJumpPicker(month: calendar.month); monthPicker = picker
         picker.onSelect = { [weak self] in self?.calendar.jump(to: $0) }
         picker.onClose = { [weak self] in self?.monthPicker = nil; self?.scheduleClose() }
+        picker.show(relativeTo: anchor)
+    }
+    func showWeekPicker(anchor: NSView) {
+        guard editor == nil, !eventDragActive else { return }
+        if let weekPicker { weekPicker.close(); return }
+        closeWork?.cancel()
+        let picker = WeekSelectionPopover(week: calendar.week)
+        weekPicker = picker
+        picker.onSelect = { [weak self] in self?.calendar.jump(to: $0) }
+        picker.onClose = { [weak self] in self?.weekPicker = nil; self?.scheduleClose() }
         picker.show(relativeTo: anchor)
     }
     func eventMenu(_ item: CalendarEvent, event: NSEvent, view: NSView) {
@@ -207,6 +219,7 @@ final class FloatingController: NSObject {
     func edit(event: CalendarEvent?, day: CivilDate, endDay: CivilDate? = nil, anchor: NSRect? = nil) {
         guard !eventDragActive, !confirmationActive else { return }
         monthPicker?.popover.performClose(nil)
+        weekPicker?.close()
         guard editor == nil else { editor?.window.makeKeyAndOrderFront(nil); return }
         if let error = store.loadError { showError(error); return }
         closeWork?.cancel()

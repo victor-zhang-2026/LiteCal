@@ -147,7 +147,11 @@ final class MonthView: NSView {
         layer?.backgroundColor = NSColor.white.cgColor; layer?.borderWidth = 0.5; layer?.borderColor = Theme.line.cgColor
         logo.image = BrandArtwork.glyph(size: 25); logo.wantsLayer = true; logo.layer?.backgroundColor = Theme.purple.cgColor; logo.layer?.cornerRadius = 8; logo.imageScaling = .scaleNone
         [logo, titleLabel].forEach(addSubview)
-        monthButton = ActionButton { [weak self] in guard let self, self.displayMode == .month else { return }; self.controller?.showMonthPicker(anchor: self.monthButton) }
+        monthButton = ActionButton { [weak self] in
+            guard let self else { return }
+            if self.displayMode == .month { self.controller?.showMonthPicker(anchor: self.monthButton) }
+            else { self.controller?.showWeekPicker(anchor: self.monthButton) }
+        }
         monthButton.hoverBackground = Theme.purple.withAlphaComponent(0.09); monthButton.layer?.cornerRadius = 6
         monthButton.toolTip = "点击选择年份和月份"
         previous = ActionButton(title: "上个月", symbol: "chevron.left") { [weak self] in self?.changeMonth(-1) }
@@ -196,9 +200,10 @@ final class MonthView: NSView {
         let sourceWeekMidY = oldCells[week]?.frame.midY ?? 100
         let oldBars = Dictionary(uniqueKeysWithValues: bars.map { (barKey($0), $0) })
         let oldMore = Dictionary(uniqueKeysWithValues: moreButtons)
-        monthButton.title = displayMode == .month ? "\(month.year)年\(month.month)月" : week.weekTitle
-        monthButton.setAccessibilityLabel(displayMode == .month ? "选择年月，\(monthButton.title)" : monthButton.title)
-        monthButton.toolTip = displayMode == .month ? "点击选择年份和月份" : nil
+        let weekEnd = week.adding(days: 6)
+        monthButton.title = displayMode == .month ? "\(month.year)年\(month.month)月" : (week.year == weekEnd.year ? "\(week.year)年\(week.weekTitle)" : week.weekTitle)
+        monthButton.setAccessibilityLabel("\(displayMode == .month ? "选择年月" : "选择周")，\(monthButton.title)")
+        monthButton.toolTip = displayMode == .month ? "点击选择年份和月份" : "点击选择具体周"
         previous.title = displayMode == .month ? "上个月" : "上一周"; previous.setAccessibilityLabel(previous.title)
         next.title = displayMode == .month ? "下个月" : "下一周"; next.setAccessibilityLabel(next.title)
         previous.imagePosition = .imageOnly; next.imagePosition = .imageOnly
@@ -298,9 +303,11 @@ final class MonthView: NSView {
         for (i, label) in weekdays.enumerated() { label.frame = NSRect(x: CGFloat(i) * col, y: 72, width: col, height: 20) }
         for (i, cell) in cells.enumerated() { cell.frame = NSRect(x: CGFloat(i % 7) * col, y: 100 + CGFloat(i / 7) * height, width: col, height: height) }
         let metrics = displayMode == .week ? (start: CGFloat(48), step: CGFloat(22)) : DayView.metrics(height: height)
+        let monthRowHeight = ((controller?.availableCalendarHeight ?? 760) - 100) / CGFloat(month.monthDays.count / 7)
+        let eventFontStep = displayMode == .week ? DayView.metrics(height: monthRowHeight).step : metrics.step
         for bar in bars {
             let s = bar.segment
-            bar.fontSize = metrics.step >= 19 ? 13 : 12
+            bar.fontSize = eventFontStep >= 19 ? 13 : 12
             bar.frame = NSRect(x: CGFloat(s.firstColumn) * col + 8, y: 100 + CGFloat(s.week) * height + metrics.start + CGFloat(s.lane) * metrics.step,
                 width: CGFloat(s.lastColumn - s.firstColumn + 1) * col - 16, height: metrics.step - 2)
         }
