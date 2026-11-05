@@ -2,7 +2,7 @@
 
 ## 安装
 
-从 [v1.2.1 Release](https://github.com/victor-zhang-2026/LiteCal/releases/tag/v1.2.1) 下载 `LiteCal-1.2.1-macOS-arm64.zip`，解压，将 App 拖入「应用程序」。macOS 13+ 部署目标，Apple silicon；实际测试环境 macOS 27.0.1。当前界面为简体中文。
+从 [v1.2.4 Release](https://github.com/victor-zhang-2026/LiteCal/releases/tag/v1.2.4) 下载 `LiteCal-1.2.4-macOS-arm64.zip`，解压，将 App 拖入「应用程序」。macOS 13+ 部署目标，Apple silicon；实际测试环境 macOS 27.0.1。当前界面为简体中文。
 
 发布包采用 ad-hoc 本地签名，尚未 Developer ID 签名/公证。如系统阻止打开，先确认来自本仓库并核对 SHA-256，然后按 [Apple 官方指南](https://support.apple.com/en-us/102445)使用「系统设置 → 隐私与安全性 → 仍要打开」。无需关闭系统安全保护。
 

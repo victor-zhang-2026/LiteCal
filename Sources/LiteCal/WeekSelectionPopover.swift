@@ -8,7 +8,7 @@ final class WeekSelectionPopover: NSObject, NSPopoverDelegate {
     var onClose: (() -> Void)?
 
     init(week: CivilDate) {
-        grid = WeekSelectionGrid(month: week.adding(days: 3).monthStart)
+        grid = WeekSelectionGrid(month: week.adding(days: 3).monthStart, selectedWeek: week.weekStart)
         super.init()
         let content = NSViewController(); content.view = grid
         popover.contentViewController = content; popover.contentSize = grid.frame.size
@@ -30,6 +30,7 @@ final class WeekSelectionPopover: NSObject, NSPopoverDelegate {
 
 final class WeekSelectionGrid: NSView {
     private var month: CivilDate
+    private let selectedWeek: CivilDate
     private let monthLabel = Theme.label("", size: 15, weight: .semibold)
     private var previous: ActionButton!, next: ActionButton!
     private var rows: [WeekRowButton] = []
@@ -37,8 +38,8 @@ final class WeekSelectionGrid: NSView {
     var onResize: ((NSSize) -> Void)?
     override var isFlipped: Bool { true }
 
-    init(month: CivilDate) {
-        self.month = month
+    init(month: CivilDate, selectedWeek: CivilDate) {
+        self.month = month; self.selectedWeek = selectedWeek
         super.init(frame: .zero)
         wantsLayer = true; layer?.backgroundColor = NSColor.white.cgColor; layer?.cornerRadius = 10
         monthLabel.alignment = .center; monthLabel.frame = NSRect(x: 48, y: 12, width: 176, height: 26)
@@ -75,7 +76,7 @@ final class WeekSelectionGrid: NSView {
         let today = CivilDate(Date())
         for row in 0..<(days.count / 7) {
             let week = days[row * 7]
-            let button = WeekRowButton(week: week, month: month, today: today) { [weak self] in self?.onSelect?(week) }
+            let button = WeekRowButton(week: week, month: month, today: today, isSelected: week == selectedWeek) { [weak self] in self?.onSelect?(week) }
             button.frame = NSRect(x: 10, y: 68 + row * 36, width: 252, height: 34)
             button.isEnabled = (2...9998).contains(week.year)
             addSubview(button); rows.append(button)
@@ -89,17 +90,19 @@ final class WeekRowButton: NSButton {
     let week: CivilDate
     let month: CivilDate
     let today: CivilDate
+    let isSelected: Bool
     private let onChoose: () -> Void
     private var hovered = false
     private var tracking: NSTrackingArea?
     override var isFlipped: Bool { true }
 
-    init(week: CivilDate, month: CivilDate, today: CivilDate, onChoose: @escaping () -> Void) {
-        self.week = week; self.month = month; self.today = today; self.onChoose = onChoose
+    init(week: CivilDate, month: CivilDate, today: CivilDate, isSelected: Bool, onChoose: @escaping () -> Void) {
+        self.week = week; self.month = month; self.today = today; self.isSelected = isSelected; self.onChoose = onChoose
         super.init(frame: .zero)
         isBordered = false; target = self; action = #selector(choose)
         let end = week.adding(days: 6)
         setAccessibilityLabel("选择 \(week.description) 至 \(end.description) 这一周")
+        setAccessibilityValue(isSelected ? "当前显示周" : "")
     }
     required init?(coder: NSCoder) { fatalError() }
     @objc private func choose() { onChoose() }
@@ -112,8 +115,8 @@ final class WeekRowButton: NSButton {
     override func mouseEntered(with event: NSEvent) { hovered = true; needsDisplay = true }
     override func mouseExited(with event: NSEvent) { hovered = false; needsDisplay = true }
     override func draw(_ dirtyRect: NSRect) {
-        if hovered && isEnabled {
-            Theme.purple.withAlphaComponent(0.09).setFill()
+        if isSelected || (hovered && isEnabled) {
+            Theme.purple.withAlphaComponent(isSelected ? (hovered ? 0.22 : 0.16) : 0.09).setFill()
             NSBezierPath(roundedRect: bounds, xRadius: 7, yRadius: 7).fill()
         }
         let style = NSMutableParagraphStyle(); style.alignment = .center

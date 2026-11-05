@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.4 — 2026-11-05
+
+- 周选择器持续以浅紫底色标出当前显示周，悬停时加深；保留今天的日期标记。
+- Highlight the displayed week across its whole row in the week picker, with a stronger hover state.
+- 本地 App 的视觉效果已由用户验收；本次未重新运行功能或界面测试。
+
 ## 1.2.3 — 2026-11-04
 
 - 周视图支持点击标题按整周选择；标题显示年份，选择器仅高亮本月中的今天。
