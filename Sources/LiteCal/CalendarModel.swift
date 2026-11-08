@@ -57,9 +57,14 @@ struct CivilDate: Hashable, Comparable, Codable, CustomStringConvertible {
 }
 
 enum LunarCalendar {
+    static func components(for day: CivilDate) -> DateComponents {
+        var calendar = Calendar(identifier: .chinese)
+        calendar.timeZone = TimeZone(identifier: "Asia/Shanghai")!
+        return calendar.dateComponents(in: calendar.timeZone, from: day.date)
+    }
+
     static func label(for day: CivilDate) -> String {
-        var c = Calendar(identifier: .chinese); c.timeZone = TimeZone(identifier: "Asia/Shanghai")!
-        let p = c.dateComponents(in: c.timeZone, from: day.date)
+        let p = components(for: day)
         let names = ["正月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "冬月", "腊月"]
         guard let m = p.month, let d = p.day, (1...12).contains(m), (1...30).contains(d) else { return "" }
         if d == 1 { return (p.isLeapMonth == true ? "闰" : "") + names[m - 1] }
@@ -69,5 +74,31 @@ enum LunarCalendar {
         if d == 20 { return "二十" }
         if d < 30 { return "廿" + digits[d - 21] }
         return "三十"
+    }
+}
+
+enum CalendarAnnotation {
+    // Fixed priority: Gregorian festival, traditional festival, then solar term.
+    private static let gregorian: [Int: String] = [
+        101: "元旦", 214: "情人节", 308: "妇女节", 501: "劳动节",
+        601: "儿童节", 910: "教师节", 1001: "国庆节"
+    ]
+    private static let lunar: [Int: String] = [
+        101: "春节", 115: "元宵节", 505: "端午节", 707: "七夕节",
+        715: "中元节", 815: "中秋节", 909: "重阳节", 1208: "腊八节"
+    ]
+
+    static func name(for day: CivilDate) -> String? {
+        if let festival = gregorian[day.month * 100 + day.day] { return festival }
+        let lunarDay = LunarCalendar.components(for: day)
+        if let month = lunarDay.month, let date = lunarDay.day {
+            if lunarDay.isLeapMonth != true, let festival = lunar[month * 100 + date] { return festival }
+            // New Year's Eve is the final day even if the twelfth month is a leap month.
+            if month == 12 && (date == 29 || date == 30) {
+                let next = LunarCalendar.components(for: day.adding(days: 1))
+                if next.month == 1 && next.day == 1 && next.isLeapMonth != true { return "除夕" }
+            }
+        }
+        return SolarTermCalendar.name(for: day)
     }
 }

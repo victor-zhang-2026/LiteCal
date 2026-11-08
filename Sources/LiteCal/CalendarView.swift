@@ -398,8 +398,9 @@ final class DayView: NSView {
     init(day: CivilDate, isCurrentMonth: Bool, today: CivilDate) {
         self.day = day; self.today = today; self.isCurrentMonth = isCurrentMonth
         let past = day < today
+        let annotation = CalendarAnnotation.name(for: day)
         dateLabel = Theme.label(String(day.day), size: 19, weight: .medium, color: !isCurrentMonth ? Theme.muted : (past ? NSColor(srgbRed: 0.45, green: 0.43, blue: 0.48, alpha: 1) : Theme.ink))
-        lunarLabel = Theme.label(LunarCalendar.label(for: day), size: 12, color: Theme.muted)
+        lunarLabel = Theme.label(annotation ?? LunarCalendar.label(for: day), size: 12, color: annotation == nil ? Theme.muted : Theme.purple)
         super.init(frame: .zero); addSubview(dateLabel); addSubview(lunarLabel)
         if day == today { dateLabel.textColor = .white }
         else if isCurrentMonth && isWeekend { dateLabel.textColor = Theme.weekendInk }
