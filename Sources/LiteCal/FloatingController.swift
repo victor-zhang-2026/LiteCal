@@ -156,13 +156,18 @@ final class FloatingController: NSObject {
     var availableCalendarHeight: CGFloat {
         screen().map { Placement.panel(trigger: trigger.frame, visible: $0.visibleFrame).height } ?? 760
     }
+    var weekCalendarWidth: CGFloat {
+        screen().map { min(MonthView.weekWidth, max(1, $0.visibleFrame.width - trigger.frame.width - 28)) } ?? MonthView.weekWidth
+    }
     func calendarFrameForCurrentMode() -> NSRect {
         guard let screen = screen() else { return panel.frame }
         let base = Placement.panel(trigger: trigger.frame, visible: screen.visibleFrame)
         let height = calendar.displayMode == .week ? min(base.height, calendar.preferredWeekHeight) : base.height
         guard calendar.displayMode == .week else { return base }
         // Use the same ball-relative placement when opening and switching modes.
-        return Placement.clamp(CGRect(x: base.minX, y: trigger.frame.midY - height / 2, width: base.width, height: height), to: screen.visibleFrame, margin: 12)
+        let width = weekCalendarWidth
+        let x = base.midX < trigger.frame.midX ? trigger.frame.minX - width - 4 : trigger.frame.maxX + 4
+        return Placement.clamp(CGRect(x: x, y: trigger.frame.midY - height / 2, width: width, height: height), to: screen.visibleFrame, margin: 12)
     }
     func open() {
         closeWork?.cancel()
