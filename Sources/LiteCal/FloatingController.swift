@@ -30,6 +30,7 @@ final class FloatingController: NSObject {
     private var menuActive = false
     private var interactionLocked: Bool { editor != nil || dayList != nil || menuActive || monthPicker != nil || weekPicker != nil || eventDragActive || confirmationActive || calendar.isTransitioning }
     var allowsEventInteraction: Bool { editor == nil && monthPicker == nil && weekPicker == nil && !confirmationActive && !calendar.isTransitioning }
+    var isDarkAppearance: Bool { Theme.isDark }
     init(store: EventStore, defaults: UserDefaults) {
         self.store = store; self.defaults = defaults
         trigger = CalendarPanel(contentRect: NSRect(x: 0, y: 0, width: 48, height: 48), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -40,13 +41,15 @@ final class FloatingController: NSObject {
             window.isOpaque = false; window.backgroundColor = .clear; window.hidesOnDeactivate = false
             window.isReleasedWhenClosed = false; window.level = .floating; window.animationBehavior = .none
             window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
-            window.appearance = NSAppearance(named: .aqua)
+            window.appearance = NSAppearance(named: Theme.isDark ? .darkAqua : .aqua)
         }
+        trigger.appearance = NSAppearance(named: .aqua)
         trigger.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.assistiveTechHighWindow)))
         trigger.hasShadow = false; trigger.becomesKeyOnlyIfNeeded = true
         let ball = TriggerView(frame: NSRect(x: 0, y: 0, width: 48, height: 48)); ball.controller = self; trigger.contentView = ball
         panel.hasShadow = true; calendar.controller = self; panel.contentView = calendar
         calendar.restoreDisplayMode(CalendarDisplayMode(rawValue: defaults.string(forKey: "calendarDisplayMode") ?? "month") ?? .month)
+        calendar.applyAppearance()
         store.onChange = { [weak self] in self?.calendar.reload(); self?.dayList?.reload() }
         NotificationCenter.default.addObserver(self, selector: #selector(screensChanged), name: NSApplication.didChangeScreenParametersNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(dayChanged), name: .NSCalendarDayChanged, object: nil)
@@ -74,6 +77,20 @@ final class FloatingController: NSObject {
         dateTimer?.invalidate()
     }
     func pinCalendar() { guard isOpen else { return }; isPinned = true; closeWork?.cancel() }
+    func toggleAppearance() {
+        Theme.isDark.toggle()
+        defaults.set(Theme.isDark, forKey: "calendarDarkMode")
+        let appearance = NSAppearance(named: Theme.isDark ? .darkAqua : .aqua)
+        NSApp.appearance = appearance
+        for window in [panel, editor?.window, dayList?.window].compactMap({ $0 }) { window.appearance = appearance }
+        monthPicker?.popover.performClose(nil)
+        weekPicker?.close()
+        editor?.dateSelector?.close()
+        calendar.applyAppearance()
+        editor?.applyAppearance()
+        dayList?.reload()
+        panel.displayIfNeeded()
+    }
     func outsideClicked() {
         guard !isDragging, editor == nil, dayList == nil, !menuActive, !eventDragActive, !confirmationActive else { return }
         // Calendar selectors have no unsaved draft. Close them explicitly so dismissal
@@ -339,7 +356,7 @@ final class TriggerView: NSView {
         shadow.shadowBlurRadius = isHovering ? 5 : 4; shadow.shadowOffset = NSSize(width: 0, height: -1); shadow.set()
         NSColor.white.setFill(); outer.fill(); NSGraphicsContext.restoreGraphicsState()
         let inset: CGFloat = isHovering ? 6 : 7
-        let fill = isHovering ? Theme.purple.blended(withFraction: 0.15, of: .black)! : Theme.purple
+        let fill = isHovering ? BrandArtwork.purple.blended(withFraction: 0.15, of: .black)! : BrandArtwork.purple
         fill.setFill(); NSBezierPath(ovalIn: bounds.insetBy(dx: inset, dy: inset)).fill()
         BrandArtwork.floatingGlyph(size: 26).draw(in: NSRect(x: bounds.midX - 13, y: bounds.midY - 13, width: 26, height: 26))
     }

@@ -13,7 +13,7 @@ final class WeekSelectionPopover: NSObject, NSPopoverDelegate {
         let content = NSViewController(); content.view = grid
         popover.contentViewController = content; popover.contentSize = grid.frame.size
         popover.behavior = .transient; popover.animates = false; popover.delegate = self
-        popover.appearance = NSAppearance(named: .aqua)
+        popover.appearance = NSAppearance(named: Theme.isDark ? .darkAqua : .aqua)
         grid.onResize = { [weak self] in self?.popover.contentSize = $0 }
         grid.onSelect = { [weak self] week in
             guard let self else { return }
@@ -33,6 +33,7 @@ final class WeekSelectionGrid: NSView {
     private let selectedWeek: CivilDate
     private let monthLabel = Theme.label("", size: 15, weight: .semibold)
     private var previous: ActionButton!, next: ActionButton!
+    private lazy var hoverHints = HoverHintPresenter(root: self)
     private var rows: [WeekRowButton] = []
     var onSelect: ((CivilDate) -> Void)?
     var onResize: ((NSSize) -> Void)?
@@ -41,7 +42,7 @@ final class WeekSelectionGrid: NSView {
     init(month: CivilDate, selectedWeek: CivilDate) {
         self.month = month; self.selectedWeek = selectedWeek
         super.init(frame: .zero)
-        wantsLayer = true; layer?.backgroundColor = NSColor.white.cgColor; layer?.cornerRadius = 10
+        wantsLayer = true; layer?.backgroundColor = Theme.background.cgColor; layer?.cornerRadius = 10
         monthLabel.alignment = .center; monthLabel.frame = NSRect(x: 48, y: 12, width: 176, height: 26)
         addSubview(monthLabel)
         previous = ActionButton(title: "上个月", symbol: "chevron.left") { [weak self] in self?.navigate(-1) }
@@ -50,6 +51,7 @@ final class WeekSelectionGrid: NSView {
             button.frame = NSRect(x: x, y: 10, width: 26, height: 28)
             button.hoverBackground = Theme.purple.withAlphaComponent(0.10)
             button.layer?.cornerRadius = 5; addSubview(button)
+            hoverHints.attach(button: button) { [weak button] in button?.title ?? "" }
         }
         for (i, title) in ["一", "二", "三", "四", "五", "六", "日"].enumerated() {
             let label = Theme.label(title, size: 11, color: Theme.muted)

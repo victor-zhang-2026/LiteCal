@@ -15,7 +15,7 @@ final class DateSelectionPopover: NSObject, NSPopoverDelegate {
         let content = NSViewController(); content.view = grid
         popover.contentViewController = content; popover.contentSize = grid.frame.size
         popover.behavior = .transient; popover.animates = false; popover.delegate = self
-        popover.appearance = NSAppearance(named: .aqua)
+        popover.appearance = NSAppearance(named: Theme.isDark ? .darkAqua : .aqua)
         grid.onResize = { [weak self] size in self?.popover.contentSize = size }
         grid.onSelect = { [weak self] day in
             guard let self else { return }
@@ -66,7 +66,7 @@ final class DateSelectionGrid: NSView {
     init(selected: CivilDate, minimum: CivilDate?) {
         self.selected = selected; self.minimum = minimum; month = selected.monthStart; focusedDay = selected
         super.init(frame: .zero)
-        wantsLayer = true; layer?.backgroundColor = NSColor.white.cgColor; layer?.cornerRadius = 10
+        wantsLayer = true; layer?.backgroundColor = Theme.background.cgColor; layer?.cornerRadius = 10
         monthLabel.alignment = .center; monthLabel.frame = NSRect(x: 40, y: 12, width: 140, height: 24); addSubview(monthLabel)
         previous = ActionButton(title: "上个月", symbol: "chevron.left") { [weak self] in self?.navigate(-1) }
         next = ActionButton(title: "下个月", symbol: "chevron.right") { [weak self] in self?.navigate(1) }

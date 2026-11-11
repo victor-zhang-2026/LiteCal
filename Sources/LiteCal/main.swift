@@ -11,6 +11,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         lockFD = Darwin.open(directory.appendingPathComponent(".instance.lock").path, O_CREAT | O_RDWR, 0o600)
         guard lockFD >= 0, flock(lockFD, LOCK_EX | LOCK_NB) == 0 else { NSApp.terminate(nil); return }
         let defaults = env["LITECAL_DATA_DIR"] != nil ? UserDefaults(suiteName: "app.litecal.qa")! : .standard
+        Theme.isDark = defaults.bool(forKey: "calendarDarkMode")
+        NSApp.appearance = NSAppearance(named: Theme.isDark ? .darkAqua : .aqua)
         let store = EventStore(directory: directory); controller = FloatingController(store: store, defaults: defaults)
         if let error = store.loadError { controller?.open(); controller?.showError(error) }
         let menu = NSMenu(); let appMenu = NSMenu(); let item = NSMenuItem(); item.submenu = appMenu; menu.addItem(item)

@@ -1,14 +1,30 @@
 import AppKit
 
 enum Theme {
-    static let purple = BrandArtwork.purple
-    static let ink = NSColor(srgbRed: 0.12, green: 0.13, blue: 0.18, alpha: 1)
-    static let muted = NSColor(srgbRed: 0.52, green: 0.52, blue: 0.58, alpha: 1)
-    static let line = NSColor(srgbRed: 0.90, green: 0.90, blue: 0.92, alpha: 1)
-    static let weekdayFill = NSColor(srgbRed: 240/255, green: 239/255, blue: 242/255, alpha: 1)
-    static let weekendFill = NSColor.white
-    static let weekendInk = NSColor(srgbRed: 80/255, green: 56/255, blue: 75/255, alpha: 1)
-    static let weekendDivider = NSColor(srgbRed: 195/255, green: 169/255, blue: 188/255, alpha: 1)
+    static var isDark = false
+    static var purple: NSColor { isDark ? NSColor(srgbRed: 0.78, green: 0.58, blue: 0.75, alpha: 1) : BrandArtwork.purple }
+    static var background: NSColor { isDark ? NSColor(srgbRed: 0.12, green: 0.12, blue: 0.13, alpha: 1) : .white }
+    static var fieldFill: NSColor { isDark ? NSColor(srgbRed: 0.20, green: 0.20, blue: 0.22, alpha: 1) : NSColor(white: 0.97, alpha: 1) }
+    static var controlFill: NSColor { isDark ? NSColor(srgbRed: 0.23, green: 0.23, blue: 0.25, alpha: 1) : NSColor(white: 0.96, alpha: 1) }
+    static var ink: NSColor { isDark ? NSColor(white: 0.94, alpha: 1) : NSColor(srgbRed: 0.12, green: 0.13, blue: 0.18, alpha: 1) }
+    static var muted: NSColor { isDark ? NSColor(white: 0.67, alpha: 1) : NSColor(srgbRed: 0.52, green: 0.52, blue: 0.58, alpha: 1) }
+    static var line: NSColor { isDark ? NSColor(white: 0.36, alpha: 1) : NSColor(srgbRed: 0.90, green: 0.90, blue: 0.92, alpha: 1) }
+    static var weekdayFill: NSColor { isDark ? NSColor(srgbRed: 0.17, green: 0.17, blue: 0.19, alpha: 1) : NSColor(srgbRed: 240/255, green: 239/255, blue: 242/255, alpha: 1) }
+    static var weekendFill: NSColor { isDark ? NSColor(srgbRed: 0.15, green: 0.15, blue: 0.17, alpha: 1) : .white }
+    static var weekendInk: NSColor { isDark ? NSColor(white: 0.91, alpha: 1) : NSColor(srgbRed: 80/255, green: 56/255, blue: 75/255, alpha: 1) }
+    static var weekendDivider: NSColor { isDark ? NSColor(srgbRed: 0.43, green: 0.33, blue: 0.43, alpha: 1) : NSColor(srgbRed: 195/255, green: 169/255, blue: 188/255, alpha: 1) }
+    static var pastInk: NSColor { isDark ? NSColor(white: 0.48, alpha: 1) : NSColor(srgbRed: 0.45, green: 0.43, blue: 0.48, alpha: 1) }
+    static var todayAccent: NSColor { purple }
+    static var todayInk: NSColor { isDark ? NSColor(white: 0.14, alpha: 1) : .white }
+    static func dayFill(past: Bool, today: Bool, weekend: Bool, currentMonth: Bool) -> NSColor {
+        if isDark {
+            if today { return NSColor(white: 0.24, alpha: 1) }
+            if !currentMonth { return NSColor(white: past ? 0.13 : 0.18, alpha: 1) }
+            if past { return NSColor(white: 0.13, alpha: 1) }
+            return NSColor(white: weekend ? 0.22 : 0.20, alpha: 1)
+        }
+        return today ? purple.withAlphaComponent(0.045) : (weekend ? weekendFill : (currentMonth ? weekdayFill : controlFill))
+    }
     static func label(_ title: String, size: CGFloat = 14, weight: NSFont.Weight = .regular, color: NSColor = ink) -> NSTextField {
         let label = NSTextField(labelWithString: title)
         label.font = .systemFont(ofSize: size, weight: weight); label.textColor = color
@@ -22,6 +38,7 @@ enum Theme {
 class ActionButton: NSButton {
     var restingBackground: NSColor? { didSet { refreshBackground() } }
     var hoverBackground: NSColor? { didSet { wantsLayer = true; updateTrackingAreas(); refreshBackground() } }
+    var onHoverChange: ((Bool) -> Void)?
     private(set) var isHovering = false
     private var hoverTracking: NSTrackingArea?
     func refreshBackground() {
@@ -35,8 +52,8 @@ class ActionButton: NSButton {
         let area = NSTrackingArea(rect: .zero, options: [.activeAlways, .inVisibleRect, .mouseEnteredAndExited], owner: self)
         hoverTracking = area; addTrackingArea(area)
     }
-    override func mouseEntered(with event: NSEvent) { isHovering = true; refreshBackground() }
-    override func mouseExited(with event: NSEvent) { isHovering = false; refreshBackground() }
+    override func mouseEntered(with event: NSEvent) { isHovering = true; refreshBackground(); onHoverChange?(true) }
+    override func mouseExited(with event: NSEvent) { isHovering = false; refreshBackground(); onHoverChange?(false) }
     var actionHandler: (() -> Void)?
     init(title: String = "", symbol: String? = nil, action: @escaping () -> Void) {
         super.init(frame: .zero)
@@ -51,8 +68,14 @@ class ActionButton: NSButton {
 }
 
 extension Theme {
-    static func eventFill(past: Bool) -> NSColor { past ? NSColor(srgbRed: 0.96, green: 0.94, blue: 0.96, alpha: 1) : NSColor(srgbRed: 0.90, green: 0.83, blue: 0.93, alpha: 1) }
-    static func eventInk(past: Bool) -> NSColor { past ? NSColor(srgbRed: 0.57, green: 0.51, blue: 0.59, alpha: 1) : NSColor(srgbRed: 0.29, green: 0.16, blue: 0.34, alpha: 1) }
+    static func eventFill(past: Bool) -> NSColor {
+        if isDark { return past ? NSColor(srgbRed: 0.24, green: 0.21, blue: 0.25, alpha: 1) : NSColor(srgbRed: 0.71, green: 0.56, blue: 0.80, alpha: 1) }
+        return past ? NSColor(srgbRed: 0.96, green: 0.94, blue: 0.96, alpha: 1) : NSColor(srgbRed: 0.90, green: 0.83, blue: 0.93, alpha: 1)
+    }
+    static func eventInk(past: Bool) -> NSColor {
+        if isDark { return past ? NSColor(srgbRed: 0.70, green: 0.64, blue: 0.71, alpha: 1) : NSColor(srgbRed: 0.15, green: 0.10, blue: 0.18, alpha: 1) }
+        return past ? NSColor(srgbRed: 0.57, green: 0.51, blue: 0.59, alpha: 1) : NSColor(srgbRed: 0.29, green: 0.16, blue: 0.34, alpha: 1)
+    }
 }
 enum CalendarDisplayMode: String { case month, week }
 private final class FlippedWeekDocument: NSView { override var isFlipped: Bool { true } }
@@ -92,16 +115,16 @@ final class CalendarModeControl: NSView {
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
-        layer?.backgroundColor = NSColor.white.withAlphaComponent(0.7).cgColor
+        layer?.backgroundColor = Theme.background.withAlphaComponent(0.7).cgColor
         layer?.cornerRadius = 16
         layer?.borderWidth = 0.75
         layer?.borderColor = Theme.line.withAlphaComponent(0.8).cgColor
         selection.wantsLayer = true; selection.layer?.cornerRadius = 14; selection.layer?.masksToBounds = true
         selection.layer?.borderWidth = 0.75
-        selection.layer?.borderColor = NSColor.white.withAlphaComponent(0.8).cgColor
+        selection.layer?.borderColor = Theme.background.withAlphaComponent(0.8).cgColor
         glass.material = .popover; glass.blendingMode = .withinWindow; glass.state = .active
         glass.autoresizingMask = [.width, .height]; selection.addSubview(glass)
-        tint.wantsLayer = true; tint.layer?.backgroundColor = NSColor(white: 0.78, alpha: 0.4).cgColor
+        tint.wantsLayer = true; tint.layer?.backgroundColor = Theme.controlFill.withAlphaComponent(0.4).cgColor
         tint.autoresizingMask = [.width, .height]; selection.addSubview(tint)
         addSubview(selection)
         for (title, value) in [("月", CalendarDisplayMode.month), ("周", .week)] {
@@ -120,6 +143,8 @@ final class CalendarModeControl: NSView {
                 }
             }
             button.setAccessibilityLabel(title + "视图"); buttons.append(button); addSubview(button)
+            button.hoverBackground = Theme.purple.withAlphaComponent(0.10)
+            button.layer?.cornerRadius = 14
         }
     }
     required init?(coder: NSCoder) { fatalError() }
@@ -180,6 +205,58 @@ final class CalendarModeControl: NSView {
         }
     }
     var selectionView: NSView { selection }
+    func applyAppearance() {
+        layer?.backgroundColor = Theme.background.withAlphaComponent(0.7).cgColor
+        layer?.borderColor = Theme.line.withAlphaComponent(0.8).cgColor
+        selection.layer?.borderColor = Theme.background.withAlphaComponent(0.8).cgColor
+        tint.layer?.backgroundColor = Theme.controlFill.withAlphaComponent(0.4).cgColor
+        for button in buttons { button.hoverBackground = Theme.purple.withAlphaComponent(0.10) }
+        needsLayout = true
+    }
+}
+
+final class PassiveHintView: NSVisualEffectView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+}
+
+final class HoverHintPresenter {
+    private weak var root: NSView?
+    private var hint: NSView?
+    private var token = UUID()
+    init(root: NSView) { self.root = root }
+    func attach(button: ActionButton, text: @escaping () -> String) {
+        button.onHoverChange = { [weak self, weak button] hovering in
+            guard let self, let button else { return }
+            if hovering { self.schedule(for: button, text: text) } else { self.clear() }
+        }
+    }
+    func clear() {
+        token = UUID()
+        hint?.removeFromSuperview(); hint = nil
+    }
+    private func schedule(for button: ActionButton, text: @escaping () -> String) {
+        clear()
+        let current = token
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) { [weak self, weak button] in
+            guard let self, let root = self.root, let button, self.token == current, button.isHovering else { return }
+            let label = Theme.label(text(), size: 11)
+            label.lineBreakMode = .byClipping
+            label.sizeToFit()
+            let textWidth = ceil(label.frame.width)
+            let width = textWidth + 14
+            let height: CGFloat = 24
+            let source = button.convert(button.bounds, to: root)
+            let x = min(max(8, source.midX - width / 2), max(8, root.bounds.width - width - 8))
+            let bubble = PassiveHintView(frame: NSRect(x: x, y: source.maxY + 6, width: width, height: height))
+            bubble.material = .popover; bubble.blendingMode = .withinWindow; bubble.state = .active
+            bubble.wantsLayer = true; bubble.layer?.cornerRadius = 5; bubble.layer?.borderWidth = 0.5; bubble.layer?.borderColor = Theme.line.cgColor
+            bubble.layer?.shadowColor = NSColor.black.cgColor; bubble.layer?.shadowOpacity = 0.12; bubble.layer?.shadowRadius = 3; bubble.layer?.shadowOffset = CGSize(width: 0, height: -1)
+            label.frame = NSRect(x: 7, y: 4, width: textWidth, height: 16)
+            bubble.addSubview(label)
+            root.addSubview(bubble, positioned: .above, relativeTo: nil)
+            self.hint = bubble
+        }
+    }
 }
 
 final class MonthView: NSView {
@@ -198,7 +275,7 @@ final class MonthView: NSView {
     private var pendingReload = false
     private var pendingWeekCreation: CivilDate?
     private(set) var visibleLaneCount = 3
-    static let weekWidth: CGFloat = 480
+    static let weekWidth: CGFloat = 420
     private let weekScroll = NSScrollView()
     private let weekDocument = FlippedWeekDocument()
     private var weekHeights: [CGFloat] = Array(repeating: 64, count: 7)
@@ -216,7 +293,8 @@ final class MonthView: NSView {
     private(set) var monthButton: ActionButton!
     private let logo = NSImageView()
     private let monthLogo = BrandArtwork.glyph(size: 25)
-    private var previous: ActionButton!, next: ActionButton!, today: ActionButton!, close: ActionButton!
+    private var previous: ActionButton!, next: ActionButton!, today: ActionButton!, close: ActionButton!, appearanceButton: ActionButton!
+    private lazy var hoverHints = HoverHintPresenter(root: self)
     private var weekdays: [NSTextField] = []
     private(set) var cells: [DayView] = []
     private(set) var bars: [EventBarView] = []
@@ -249,7 +327,7 @@ final class MonthView: NSView {
         self.store = store
         super.init(frame: NSRect(x: 0, y: 0, width: 980, height: 760))
         wantsLayer = true; layer?.cornerRadius = 20; layer?.masksToBounds = true
-        layer?.backgroundColor = NSColor.white.cgColor; layer?.borderWidth = 0.5; layer?.borderColor = Theme.line.cgColor
+        layer?.backgroundColor = Theme.background.cgColor; layer?.borderWidth = 0.5; layer?.borderColor = Theme.line.cgColor
         logo.image = monthLogo; logo.wantsLayer = true; logo.layer?.backgroundColor = Theme.purple.cgColor; logo.layer?.cornerRadius = 8; logo.imageScaling = .scaleNone
         [logo, titleLabel].forEach(addSubview)
         monthButton = ActionButton { [weak self] in
@@ -258,17 +336,21 @@ final class MonthView: NSView {
             else { self.controller?.showWeekPicker(anchor: self.monthButton) }
         }
         monthButton.hoverBackground = Theme.purple.withAlphaComponent(0.09); monthButton.layer?.cornerRadius = 6
-        monthButton.toolTip = "点击选择年份和月份"
         previous = ActionButton(title: "上个月", symbol: "chevron.left") { [weak self] in self?.changeMonth(-1) }
         next = ActionButton(title: "下个月", symbol: "chevron.right") { [weak self] in self?.changeMonth(1) }
         today = ActionButton(title: "今天") { [weak self] in guard let self else { return }; self.jump(to: self.todayProvider()) }
         today.wantsLayer = true; today.layer?.cornerRadius = 15; today.layer?.borderWidth = 1; today.layer?.borderColor = Theme.line.cgColor
+        appearanceButton = ActionButton(title: "切换深浅模式", symbol: "sun.max") { [weak self] in self?.controller?.toggleAppearance() }
         close = ActionButton(title: "收起日历", symbol: "xmark") { [weak self] in self?.controller?.close() }
-        [monthButton!, previous!, next!, today!, close!].forEach(addSubview)
+        for button in [previous!, next!, today!, appearanceButton!, close!] {
+            button.hoverBackground = button === close ? NSColor.systemRed.withAlphaComponent(0.09) : Theme.ink.withAlphaComponent(0.08)
+            button.layer?.cornerRadius = button === today ? 15 : 6
+        }
+        [monthButton!, previous!, next!, today!, appearanceButton!, close!].forEach(addSubview)
         addSubview(modeControl)
         weekScroll.drawsBackground = false; weekScroll.hasVerticalScroller = true
         weekScroll.autohidesScrollers = true; weekScroll.contentView.drawsBackground = false
-        weekScroll.wantsLayer = true; weekScroll.layer?.cornerRadius = 18
+        weekScroll.wantsLayer = true; weekScroll.layer?.cornerRadius = 0
         weekScroll.layer?.masksToBounds = true; weekScroll.layer?.borderWidth = 0.5
         weekScroll.layer?.borderColor = Theme.line.cgColor
         weekDocument.frame = NSRect(x: 0, y: 0, width: Self.weekWidth - 24, height: 490)
@@ -279,12 +361,48 @@ final class MonthView: NSView {
             // click-to-pin monitor. It is still an explicit calendar interaction.
             self?.controller?.pinCalendar(); self?.setDisplayMode($0)
         }
+        for button in [monthButton!, previous!, next!, today!, appearanceButton!, close!] + modeControl.buttons {
+            hoverHints.attach(button: button) { [weak self, weak button] in
+                guard let self, let button else { return "" }
+                return self.hintText(for: button)
+            }
+        }
         for (index, name) in ["一", "二", "三", "四", "五", "六", "日"].enumerated() {
             let label = Theme.label(name, size: 14, weight: index >= 5 ? .semibold : .regular, color: index >= 5 ? Theme.purple : Theme.muted); label.alignment = .center; weekdays.append(label); addSubview(label)
         }
         reload()
     }
     required init?(coder: NSCoder) { fatalError() }
+    private func hintText(for button: ActionButton) -> String {
+        if button === monthButton { return displayMode == .month ? "选择年月" : "选择具体周" }
+        if button === previous { return displayMode == .month ? "上一月" : "上一周" }
+        if button === next { return displayMode == .month ? "下一月" : "下一周" }
+        if button === today { return "回到今天" }
+        if button === appearanceButton { return controller?.isDarkAppearance == true ? "切换到浅色模式" : "切换到深色模式" }
+        if button === close { return "收起日历" }
+        return button.title == "月" ? "切换到月视图" : "切换到周视图"
+    }
+    func applyAppearance() {
+        hoverHints.clear()
+        layer?.backgroundColor = Theme.background.cgColor
+        layer?.borderColor = Theme.line.cgColor
+        titleLabel.textColor = Theme.ink
+        logo.layer?.backgroundColor = Theme.purple.cgColor
+        today.layer?.borderColor = Theme.line.cgColor
+        weekScroll.layer?.borderColor = Theme.line.cgColor
+        appearanceButton.image = Theme.symbol(Theme.isDark ? "moon" : "sun.max", size: 18)
+        appearanceButton.setAccessibilityLabel(Theme.isDark ? "切换到浅色模式" : "切换到深色模式")
+        for button in [monthButton!, previous!, next!, today!, appearanceButton!, close!] {
+            button.contentTintColor = Theme.ink
+            button.hoverBackground = button === close ? NSColor.systemRed.withAlphaComponent(0.09) : Theme.ink.withAlphaComponent(0.08)
+        }
+        for (index, label) in weekdays.enumerated() { label.textColor = index >= 5 ? Theme.purple : Theme.muted }
+        modeControl.applyAppearance()
+        reload()
+        needsDisplay = true; needsLayout = true
+        for cell in cells { cell.needsDisplay = true; cell.needsLayout = true }
+        for bar in bars { bar.needsDisplay = true }
+    }
     func jump(to value: CivilDate) {
         guard (2...9998).contains(value.year), !isEventDragging, !isTransitioning else { return }
         selectedDay = nil; month = value.monthStart; week = value.weekStart; reload()
@@ -373,7 +491,6 @@ final class MonthView: NSView {
                 ? "\(week.year)年\(week.month)月\(week.day)日–\(weekEnd.month)月\(weekEnd.day)日"
                 : "\(week.year)年\(week.month)月\(week.day)日–\(weekEnd.day)日")
         monthButton.setAccessibilityLabel("\(displayMode == .month ? "选择年月" : "选择周")，\(monthButton.title)")
-        monthButton.toolTip = displayMode == .month ? "点击选择年份和月份" : "点击选择具体周"
         previous.title = displayMode == .month ? "上个月" : "上一周"; previous.setAccessibilityLabel(previous.title)
         next.title = displayMode == .month ? "下个月" : "下一周"; next.setAccessibilityLabel(next.title)
         previous.imagePosition = .imageOnly; next.imagePosition = .imageOnly
@@ -484,24 +601,27 @@ final class MonthView: NSView {
         titleLabel.font = .systemFont(ofSize: w < 800 ? 18 : 20, weight: .semibold)
         monthButton.frame = NSRect(x: center - 85, y: 17, width: 170, height: 30); monthButton.font = .systemFont(ofSize: w < 800 ? 18 : 20, weight: .semibold)
         previous.frame = NSRect(x: center - 119, y: 17, width: 30, height: 30); next.frame = NSRect(x: center + 89, y: 17, width: 30, height: 30)
-        modeControl.frame = NSRect(x: w - 234, y: 17, width: 78, height: 30)
-        today.frame = NSRect(x: w - 148, y: 17, width: 72, height: 30); today.font = .systemFont(ofSize: 14)
+        modeControl.frame = NSRect(x: w - 270, y: 17, width: 78, height: 30)
+        today.frame = NSRect(x: w - 180, y: 17, width: 72, height: 30); today.font = .systemFont(ofSize: 14)
+        appearanceButton.frame = NSRect(x: w - 94, y: 17, width: 30, height: 30)
         close.frame = NSRect(x: w - 52, y: 17, width: 30, height: 30)
         if displayMode == .week {
             logo.image = monthLogo; logo.contentTintColor = nil
             logo.layer?.backgroundColor = Theme.purple.cgColor
             logo.frame = NSRect(x: 20, y: 17, width: 34, height: 34)
-            titleLabel.frame = NSRect(x: 65, y: 21, width: 130, height: 27)
+            titleLabel.frame = NSRect(x: 56, y: 21, width: 104, height: 27)
             titleLabel.font = .systemFont(ofSize: 18, weight: .semibold)
-            modeControl.frame = NSRect(x: w - 196, y: 18, width: 100, height: 32)
-            today.frame = NSRect(x: w - 84, y: 18, width: 68, height: 32)
+            modeControl.frame = NSRect(x: w - 236, y: 18, width: 78, height: 32)
+            today.frame = NSRect(x: w - 150, y: 18, width: 68, height: 32)
             today.font = .systemFont(ofSize: 13, weight: .medium)
+            appearanceButton.frame = NSRect(x: w - 74, y: 18, width: 28, height: 32)
+            close.frame = NSRect(x: w - 40, y: 18, width: 28, height: 32)
             previous.frame = NSRect(x: (w - 244) / 2 - 38, y: 71, width: 30, height: 30)
             monthButton.frame = NSRect(x: (w - 244) / 2, y: 69, width: 244, height: 34)
             next.frame = NSRect(x: (w + 244) / 2 + 8, y: 71, width: 30, height: 30)
             let weekEnd = week.adding(days: 6)
             monthButton.font = .systemFont(ofSize: week.year != weekEnd.year ? 12 : week.month != weekEnd.month ? 14 : 16, weight: .semibold)
-            close.isHidden = true
+            close.isHidden = false
             weekScroll.frame = NSRect(x: 12, y: 120, width: max(0, w - 24), height: max(0, size.height - 138))
             let tableWidth = max(0, w - 24)
             weekDocument.frame = NSRect(x: 0, y: 0, width: tableWidth, height: weekHeights.reduce(0, +))
@@ -638,8 +758,14 @@ final class DayView: NSView {
     let day: CivilDate, today: CivilDate
     private var weekday: Int { CivilDate.calendar.component(.weekday, from: day.date) }
     private var isWeekend: Bool { weekday == 7 || weekday == 1 }
+    private var dateInk: NSColor {
+        if day == today { return Theme.todayInk }
+        if !isCurrentMonth { return Theme.isDark && day < today ? Theme.pastInk : Theme.muted }
+        if Theme.isDark && day < today { return Theme.pastInk }
+        return isWeekend ? Theme.weekendInk : (day < today ? Theme.pastInk : Theme.ink)
+    }
     var isCurrentMonth: Bool { didSet {
-        dateLabel.textColor = day == today ? .white : (!isCurrentMonth ? Theme.muted : (isWeekend ? Theme.weekendInk : (day < today ? NSColor(srgbRed: 0.45, green: 0.43, blue: 0.48, alpha: 1) : Theme.ink)))
+        dateLabel.textColor = dateInk
         needsLayout = true; needsDisplay = true
     } }
     var onNew: (() -> Void)?
@@ -656,11 +782,10 @@ final class DayView: NSView {
         self.day = day; self.today = today; self.isCurrentMonth = isCurrentMonth
         let past = day < today
         let annotation = CalendarAnnotation.name(for: day)
-        dateLabel = Theme.label(String(day.day), size: 19, weight: .medium, color: !isCurrentMonth ? Theme.muted : (past ? NSColor(srgbRed: 0.45, green: 0.43, blue: 0.48, alpha: 1) : Theme.ink))
+        dateLabel = Theme.label(String(day.day), size: 19, weight: .medium, color: !isCurrentMonth ? Theme.muted : (past ? Theme.pastInk : Theme.ink))
         lunarLabel = Theme.label(annotation ?? LunarCalendar.label(for: day), size: 12, color: annotation == nil ? Theme.muted : Theme.purple)
         super.init(frame: .zero); addSubview(dateLabel); addSubview(lunarLabel)
-        if day == today { dateLabel.textColor = .white }
-        else if isCurrentMonth && isWeekend { dateLabel.textColor = Theme.weekendInk }
+        dateLabel.textColor = dateInk
         toolTip = "\(day.description) · 双击空白处新增事项"
         setAccessibilityElement(true); setAccessibilityRole(.group); setAccessibilityLabel(day.description)
     }
@@ -670,7 +795,7 @@ final class DayView: NSView {
         if weekRow {
             let groupTop = (bounds.height - 50) / 2
             dateLabel.font = .systemFont(ofSize: 20, weight: .medium)
-            dateLabel.textColor = day == today ? .white : (isWeekend ? Theme.weekendInk : day < today ? NSColor(srgbRed: 0.45, green: 0.43, blue: 0.48, alpha: 1) : Theme.ink)
+            dateLabel.textColor = dateInk
             dateLabel.alignment = .center
             dateLabel.frame = NSRect(x: 82, y: groupTop + 1, width: 52, height: 30)
             lunarLabel.font = .systemFont(ofSize: 12)
@@ -682,13 +807,13 @@ final class DayView: NSView {
         lunarLabel.textColor = CalendarAnnotation.name(for: day) == nil ? Theme.muted : Theme.purple
         let compact = bounds.height < 126, small = bounds.height < 102, current = day == today
         dateLabel.font = .systemFont(ofSize: small ? 17 : 19, weight: isWeekend && isCurrentMonth && !current ? .semibold : .medium)
-        dateLabel.alignment = current ? .center : .left; if current { dateLabel.textColor = .white }
+        dateLabel.alignment = current ? .center : .left; dateLabel.textColor = dateInk
         dateLabel.frame = NSRect(x: current && small ? 9 : 12, y: small ? 2 : 6, width: 32, height: small ? 22 : 24)
         lunarLabel.frame = NSRect(x: current || compact ? 48 : 13, y: current || compact ? (small ? 7 : 12) : 29, width: bounds.width - (current || compact ? 53 : 22), height: 17)
     }
     override func draw(_ dirtyRect: NSRect) {
         if weekRow {
-            (day == today ? Theme.purple.withAlphaComponent(0.045) : isWeekend ? Theme.weekendFill : Theme.weekdayFill).setFill(); bounds.fill()
+            Theme.dayFill(past: day < today, today: day == today, weekend: isWeekend, currentMonth: true).setFill(); bounds.fill()
             Theme.line.setStroke(); let line = NSBezierPath(); line.lineWidth = 0.5
             for x: CGFloat in [64, 152] { line.move(to: NSPoint(x: x, y: 0)); line.line(to: NSPoint(x: x, y: bounds.maxY)) }
             line.move(to: NSPoint(x: 0, y: bounds.maxY - 0.5)); line.line(to: NSPoint(x: bounds.maxX, y: bounds.maxY - 0.5)); line.stroke()
@@ -699,14 +824,14 @@ final class DayView: NSView {
             if showsWeekEmpty {
                 ("无安排" as NSString).draw(in: NSRect(x: 169, y: (bounds.height - 20) / 2, width: 100, height: 20), withAttributes: [.font: NSFont.systemFont(ofSize: 12), .foregroundColor: Theme.muted])
             }
-            if day == today { Theme.purple.setFill(); NSBezierPath(ovalIn: NSRect(x: 92, y: (bounds.height - 50) / 2, width: 32, height: 32)).fill() }
+            if day == today { Theme.todayAccent.setFill(); NSBezierPath(ovalIn: NSRect(x: 92, y: (bounds.height - 50) / 2, width: 32, height: 32)).fill() }
             if isDropTarget { Theme.purple.withAlphaComponent(0.09).setFill(); bounds.fill(); Theme.purple.withAlphaComponent(0.65).setStroke(); let p = NSBezierPath(rect: bounds.insetBy(dx: 1, dy: 1)); p.lineWidth = 2; p.stroke() }
             return
         }
-        (day == today ? Theme.purple.withAlphaComponent(0.045) : (isWeekend ? Theme.weekendFill : (isCurrentMonth ? Theme.weekdayFill : NSColor(srgbRed: 233/255, green: 232/255, blue: 236/255, alpha: 1)))).setFill(); bounds.fill()
+        Theme.dayFill(past: day < today, today: day == today, weekend: isWeekend, currentMonth: isCurrentMonth).setFill(); bounds.fill()
         Theme.line.setStroke(); let grid = NSBezierPath(); grid.lineWidth = 0.5; grid.move(to: NSPoint(x: bounds.maxX, y: 0)); grid.line(to: NSPoint(x: bounds.maxX, y: bounds.maxY)); grid.line(to: NSPoint(x: 0, y: bounds.maxY)); grid.stroke()
         if weekday == 7 { Theme.weekendDivider.setFill(); NSRect(x: 0, y: 0, width: 2, height: bounds.height).fill() }
-        if day == today { let d: CGFloat = bounds.height < 102 ? 24 : 30; Theme.purple.setFill(); NSBezierPath(ovalIn: NSRect(x: 12, y: 2, width: d, height: d)).fill() }
+        if day == today { let d: CGFloat = bounds.height < 102 ? 24 : 30; Theme.todayAccent.setFill(); NSBezierPath(ovalIn: NSRect(x: 12, y: 2, width: d, height: d)).fill() }
         if isDropTarget { Theme.purple.withAlphaComponent(0.09).setFill(); bounds.fill(); Theme.purple.withAlphaComponent(0.65).setStroke(); let p = NSBezierPath(rect: bounds.insetBy(dx: 1, dy: 1)); p.lineWidth = 2; p.stroke() }
     }
     weak var monthView: MonthView?

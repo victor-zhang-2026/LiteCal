@@ -22,58 +22,110 @@ final class EventEditor: NSObject, NSWindowDelegate, NSTextFieldDelegate {
         let event = event.flatMap { selected in store.events.first { $0.id == selected.id } }
         self.event = event; self.store = store
         startDate = event?.startDate ?? day; endDate = event?.endDate ?? day
-        window = CalendarPanel(contentRect: NSRect(x: 0, y: 0, width: 344, height: 314), styleMask: [.borderless], backing: .buffered, defer: false)
+        window = CalendarPanel(contentRect: NSRect(x: 0, y: 0, width: 344, height: 376), styleMask: [.borderless], backing: .buffered, defer: false)
         super.init()
         window.title = event == nil ? "新增事项" : "事项详情"
         window.level = .floating; window.isReleasedWhenClosed = false; window.hidesOnDeactivate = false
-        window.delegate = self; window.appearance = NSAppearance(named: .aqua)
+        window.delegate = self; window.appearance = NSAppearance(named: Theme.isDark ? .darkAqua : .aqua)
         window.isOpaque = false; window.backgroundColor = .clear; window.hasShadow = true
         window.collectionBehavior = [.fullScreenAuxiliary, .canJoinAllSpaces]
-        let view = FlippedView(frame: NSRect(x: 0, y: 0, width: 344, height: 314))
-        view.wantsLayer = true; view.layer?.backgroundColor = NSColor.white.cgColor; view.layer?.cornerRadius = 12
-        view.layer?.borderColor = Theme.line.cgColor; view.layer?.borderWidth = 1; window.contentView = view
+        let view = FlippedView(frame: NSRect(x: 0, y: 0, width: 344, height: 376))
+        view.wantsLayer = true; view.layer?.backgroundColor = Theme.background.cgColor; view.layer?.cornerRadius = 14
+        view.layer?.borderColor = Theme.line.cgColor; view.layer?.borderWidth = 0.5; window.contentView = view
+        let mark = NSImageView(frame: NSRect(x: 18, y: 12, width: 32, height: 32))
+        mark.image = BrandArtwork.floatingGlyph(size: 32)
+        mark.wantsLayer = true; mark.layer?.backgroundColor = Theme.purple.cgColor; mark.layer?.cornerRadius = 7
+        view.addSubview(mark)
         let heading = Theme.label(window.title, size: 16, weight: .semibold)
-        heading.frame = NSRect(x: 18, y: 16, width: 260, height: 23); view.addSubview(heading)
+        heading.frame = NSRect(x: 60, y: 17, width: 234, height: 23); view.addSubview(heading)
         let close = ActionButton(title: "关闭", symbol: "xmark") { [weak self] in self?.cancel() }
-        close.frame = NSRect(x: 304, y: 14, width: 24, height: 24); view.addSubview(close)
-        titleField.frame = NSRect(x: 18, y: 49, width: 308, height: 32); titleField.font = .systemFont(ofSize: 15)
-        titleField.focusRingType = .none
+        close.frame = NSRect(x: 300, y: 13, width: 28, height: 28); close.hoverBackground = Theme.purple.withAlphaComponent(0.08); close.layer?.cornerRadius = 7; view.addSubview(close)
+        let divider = NSView(frame: NSRect(x: 0, y: 55, width: 344, height: 0.5))
+        divider.wantsLayer = true; divider.layer?.backgroundColor = Theme.line.cgColor; view.addSubview(divider)
+        titleField.frame = NSRect(x: 18, y: 66, width: 308, height: 40); titleField.font = .systemFont(ofSize: 15)
+        titleField.focusRingType = .none; titleField.textColor = Theme.ink
         titleField.bezelStyle = .roundedBezel; titleField.stringValue = event?.title ?? ""
         titleField.placeholderString = "事项名称"; titleField.delegate = self
         titleField.target = self; titleField.action = #selector(save); titleField.setAccessibilityLabel("事项名称"); view.addSubview(titleField)
         for index in 0...1 {
             let label = Theme.label(index == 0 ? "开始" : "结束", size: 13, color: Theme.muted)
-            label.frame = NSRect(x: 18, y: 97 + index * 37, width: 42, height: 24); view.addSubview(label)
+            label.frame = NSRect(x: 18, y: 125 + index * 45, width: 42, height: 25); view.addSubview(label)
             let button = ActionButton(title: "") { [weak self] in self?.chooseDate(start: index == 0) }
-            button.frame = NSRect(x: 68, y: 93 + index * 37, width: 258, height: 30)
+            button.frame = NSRect(x: 68, y: 118 + index * 45, width: 258, height: 38)
             button.font = .systemFont(ofSize: 14); button.alignment = .left
             button.image = Theme.symbol("calendar", size: 15); button.imagePosition = .imageLeading
-            button.restingBackground = NSColor(white: 0.97, alpha: 1); button.hoverBackground = Theme.purple.withAlphaComponent(0.10); button.layer?.cornerRadius = 5
+            button.restingBackground = Theme.fieldFill; button.hoverBackground = Theme.purple.withAlphaComponent(0.10); button.layer?.cornerRadius = 8
+            button.layer?.borderWidth = 0.5; button.layer?.borderColor = Theme.line.cgColor
             if index == 0 { startButton = button } else { endButton = button }; view.addSubview(button)
         }
         let repeatLabel = Theme.label("重复", size: 13, color: Theme.muted)
-        repeatLabel.frame = NSRect(x: 18, y: 171, width: 42, height: 24); view.addSubview(repeatLabel)
-        recurrenceButton.frame = NSRect(x: 65, y: 166, width: 264, height: 30)
+        repeatLabel.frame = NSRect(x: 18, y: 215, width: 42, height: 25); view.addSubview(repeatLabel)
+        recurrenceButton.frame = NSRect(x: 68, y: 208, width: 258, height: 38)
         recurrenceButton.addItems(withTitles: RepeatFrequency.allCases.map(\.title))
         recurrenceButton.selectItem(at: RepeatFrequency.allCases.firstIndex(of: event?.recurrence ?? .none)!)
-        recurrenceButton.font = .systemFont(ofSize: 14); recurrenceButton.setAccessibilityLabel("重复频率")
+        recurrenceButton.font = .systemFont(ofSize: 14); recurrenceButton.controlSize = .large
+        recurrenceButton.isBordered = false; recurrenceButton.wantsLayer = true
+        recurrenceButton.layer?.backgroundColor = Theme.fieldFill.cgColor
+        recurrenceButton.layer?.cornerRadius = 8; recurrenceButton.layer?.borderWidth = 0.5; recurrenceButton.layer?.borderColor = Theme.line.cgColor
+        recurrenceButton.setAccessibilityLabel("重复频率")
         recurrenceButton.target = self; recurrenceButton.action = #selector(recurrenceChanged)
         view.addSubview(recurrenceButton)
-        recurrenceNote.frame = NSRect(x: 18, y: 202, width: 308, height: 20); view.addSubview(recurrenceNote)
+        recurrenceNote.frame = NSRect(x: 18, y: 253, width: 308, height: 20); view.addSubview(recurrenceNote)
         recurrenceChanged()
         refreshDates()
-        errorLabel.frame = NSRect(x: 18, y: 230, width: 308, height: 30)
+        errorLabel.frame = NSRect(x: 18, y: 278, width: 308, height: 32)
         errorLabel.maximumNumberOfLines = 2; errorLabel.lineBreakMode = .byWordWrapping; view.addSubview(errorLabel)
-        let cancel = NSButton(title: "取消", target: self, action: #selector(cancel)); cancel.bezelStyle = .rounded
-        cancel.keyEquivalent = "\u{1b}"; cancel.frame = NSRect(x: 164, y: 269, width: 76, height: 29); view.addSubview(cancel)
-        saveButton = NSButton(title: "保存", target: self, action: #selector(save)); saveButton.bezelStyle = .rounded
-        saveButton.keyEquivalent = "\r"; saveButton.bezelColor = Theme.purple; saveButton.contentTintColor = .white
-        saveButton.frame = NSRect(x: 244, y: 269, width: 82, height: 29); view.addSubview(saveButton)
+        let footerLine = NSView(frame: NSRect(x: 0, y: 321, width: 344, height: 0.5))
+        footerLine.wantsLayer = true; footerLine.layer?.backgroundColor = Theme.line.cgColor; view.addSubview(footerLine)
+        let cancel = ActionButton(title: "取消") { [weak self] in self?.cancel() }
+        cancel.restingBackground = Theme.controlFill; cancel.hoverBackground = Theme.purple.withAlphaComponent(0.10); cancel.layer?.cornerRadius = 8
+        cancel.keyEquivalent = "\u{1b}"; cancel.frame = NSRect(x: 164, y: 333, width: 76, height: 32); view.addSubview(cancel)
+        saveButton = ActionButton(title: "保存") { [weak self] in self?.save() }
+        (saveButton as? ActionButton)?.restingBackground = Theme.purple
+        (saveButton as? ActionButton)?.hoverBackground = Theme.purple.blended(withFraction: 0.13, of: .black)
+        saveButton.wantsLayer = true; saveButton.layer?.cornerRadius = 8
+        saveButton.keyEquivalent = "\r"; saveButton.contentTintColor = .white
+        saveButton.frame = NSRect(x: 244, y: 333, width: 82, height: 32); view.addSubview(saveButton)
         if event != nil {
-            let delete = NSButton(title: "删除", target: self, action: #selector(deleteEvent)); delete.bezelStyle = .rounded
-            delete.contentTintColor = .systemRed; delete.frame = NSRect(x: 18, y: 269, width: 76, height: 29); view.addSubview(delete)
+            let delete = ActionButton(title: "删除") { [weak self] in self?.deleteEvent() }
+            delete.restingBackground = Theme.controlFill; delete.hoverBackground = NSColor.systemRed.withAlphaComponent(0.10); delete.layer?.cornerRadius = 8
+            delete.contentTintColor = .systemRed; delete.frame = NSRect(x: 18, y: 333, width: 76, height: 32); view.addSubview(delete)
         }
         window.initialFirstResponder = titleField; updateSave()
+    }
+    func applyAppearance() {
+        guard let root = window.contentView else { return }
+        root.layer?.backgroundColor = Theme.background.cgColor
+        root.layer?.borderColor = Theme.line.cgColor
+        titleField.textColor = Theme.ink
+        recurrenceButton.layer?.backgroundColor = Theme.fieldFill.cgColor
+        recurrenceButton.layer?.borderColor = Theme.line.cgColor
+        recurrenceButton.contentTintColor = Theme.ink
+        for subview in root.subviews {
+            if let mark = subview as? NSImageView { mark.layer?.backgroundColor = Theme.purple.cgColor }
+            if subview.frame.height <= 1 { subview.layer?.backgroundColor = Theme.line.cgColor }
+            if let label = subview as? NSTextField, label !== titleField, label !== errorLabel {
+                label.textColor = label.stringValue == window.title ? Theme.ink : Theme.muted
+            }
+            guard let button = subview as? ActionButton else { continue }
+            if button === startButton || button === endButton {
+                button.restingBackground = Theme.fieldFill
+                button.hoverBackground = Theme.purple.withAlphaComponent(0.10)
+                button.layer?.borderColor = Theme.line.cgColor
+                button.contentTintColor = Theme.ink
+            } else if button === saveButton {
+                button.restingBackground = Theme.purple
+                button.hoverBackground = Theme.purple.blended(withFraction: 0.13, of: .black)
+                button.contentTintColor = .white
+            } else if button.title == "删除" {
+                button.restingBackground = Theme.controlFill
+            } else if button.title == "取消" {
+                button.restingBackground = Theme.controlFill
+                button.hoverBackground = Theme.purple.withAlphaComponent(0.10)
+                button.contentTintColor = Theme.ink
+            } else { button.contentTintColor = Theme.ink }
+        }
+        window.displayIfNeeded()
     }
     @objc func recurrenceChanged() {
         let frequency = RepeatFrequency.allCases[recurrenceButton.indexOfSelectedItem]
@@ -116,7 +168,10 @@ final class EventEditor: NSObject, NSWindowDelegate, NSTextFieldDelegate {
     func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
         if commandSelector == #selector(NSResponder.cancelOperation(_:)) { cancel(); return true }; return false
     }
-    private func updateSave() { saveButton.isEnabled = !titleField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && startDate <= endDate }
+    private func updateSave() {
+        saveButton.isEnabled = !titleField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && startDate <= endDate
+        saveButton.alphaValue = saveButton.isEnabled ? 1 : 0.55
+    }
     @objc func save() {
         guard window.attachedSheet == nil, !finished else { return }
         window.makeFirstResponder(nil)
@@ -138,7 +193,7 @@ final class YearField: NSTextField {
         hoverTracking = area; addTrackingArea(area)
     }
     override func mouseEntered(with event: NSEvent) { backgroundColor = Theme.purple.withAlphaComponent(0.08) }
-    override func mouseExited(with event: NSEvent) { backgroundColor = .white }
+    override func mouseExited(with event: NSEvent) { backgroundColor = Theme.background }
     override func scrollWheel(with event: NSEvent) {
         guard abs(event.scrollingDeltaY) >= 1 else { return }; onScroll?(event.scrollingDeltaY > 0 ? 1 : -1)
     }
@@ -151,10 +206,12 @@ final class MonthJumpPicker: NSObject, NSPopoverDelegate, NSTextFieldDelegate {
     var onSelect: ((CivilDate) -> Void)?
     var onClose: (() -> Void)?
     private(set) var buttons: [ActionButton] = []
+    private var hoverHints: HoverHintPresenter?
     init(month: CivilDate) {
         year = month.year; selected = month; super.init()
         let root = FlippedView(frame: NSRect(x: 0, y: 0, width: 272, height: 236))
-        root.wantsLayer = true; root.layer?.backgroundColor = NSColor.white.cgColor
+        root.wantsLayer = true; root.layer?.backgroundColor = Theme.background.cgColor
+        hoverHints = HoverHintPresenter(root: root)
         let vc = NSViewController(); vc.view = root; popover.contentViewController = vc
         popover.behavior = .transient; popover.animates = false; popover.delegate = self
         yearField.frame = NSRect(x: 80, y: 12, width: 112, height: 29); yearField.alignment = .center
@@ -166,6 +223,7 @@ final class MonthJumpPicker: NSObject, NSPopoverDelegate, NSTextFieldDelegate {
             let b = ActionButton(title: title, symbol: delta < 0 ? "chevron.left" : "chevron.right") { [weak self] in self?.changeYear(delta) }
             b.hoverBackground = Theme.purple.withAlphaComponent(0.10); b.layer?.cornerRadius = 5
             b.frame = NSRect(x: x, y: 12, width: 32, height: 29); root.addSubview(b)
+            hoverHints?.attach(button: b) { title }
         }
         for month in 1...12 {
             let b = ActionButton(title: "\(month)月") { [weak self] in self?.choose(month) }
@@ -184,7 +242,7 @@ final class MonthJumpPicker: NSObject, NSPopoverDelegate, NSTextFieldDelegate {
     private func refreshColors() {
         for (i, b) in buttons.enumerated() {
             let selected = year == selected.year && i + 1 == selected.month
-            b.restingBackground = selected ? Theme.purple : NSColor(white: 0.97, alpha: 1)
+            b.restingBackground = selected ? Theme.purple : Theme.fieldFill
             b.hoverBackground = selected ? Theme.purple.blended(withFraction: 0.13, of: .black) : Theme.purple.withAlphaComponent(0.12)
             b.contentTintColor = selected ? .white : Theme.ink
         }
@@ -193,7 +251,7 @@ final class MonthJumpPicker: NSObject, NSPopoverDelegate, NSTextFieldDelegate {
         guard let value = Int(yearField.stringValue), (2...9998).contains(value) else { NSSound.beep(); return }
         onSelect?(CivilDate(year: value, month: month, day: 1)); popover.performClose(nil)
     }
-    func popoverDidClose(_ notification: Notification) { onClose?() }
+    func popoverDidClose(_ notification: Notification) { hoverHints?.clear(); onClose?() }
 }
 
 final class DayListWindow: NSObject, NSWindowDelegate {
@@ -209,7 +267,7 @@ final class DayListWindow: NSObject, NSWindowDelegate {
         self.day = day; self.store = store
         window = CalendarPanel(contentRect: NSRect(x: 0, y: 0, width: 440, height: 440), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         super.init()
-        window.title = "\(day.year)年\(day.month)月\(day.day)日"; window.level = .floating; window.isReleasedWhenClosed = false; window.hidesOnDeactivate = false; window.delegate = self; window.appearance = NSAppearance(named: .aqua)
+        window.title = "\(day.year)年\(day.month)月\(day.day)日"; window.level = .floating; window.isReleasedWhenClosed = false; window.hidesOnDeactivate = false; window.delegate = self; window.appearance = NSAppearance(named: Theme.isDark ? .darkAqua : .aqua)
         window.collectionBehavior = [.fullScreenAuxiliary, .canJoinAllSpaces]
         let view = NSView(frame: NSRect(x: 0, y: 0, width: 440, height: 440)); window.contentView = view
         scroll.frame = NSRect(x: 18, y: 70, width: 404, height: 350); scroll.hasVerticalScroller = true; scroll.drawsBackground = false; view.addSubview(scroll)

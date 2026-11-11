@@ -6,7 +6,7 @@
 
 A native floating calendar for macOS. Hover to see your week or month, capture a plan, and return to work. Local storage, no account, fully offline.
 
-[下载 / Download 1.2.7](https://github.com/victor-zhang-2026/LiteCal/releases/download/v1.2.7/LiteCal-1.2.7-macOS-arm64.zip) · [发布说明 / Release notes](https://github.com/victor-zhang-2026/LiteCal/releases/tag/v1.2.7) · [反馈 / Issues](https://github.com/victor-zhang-2026/LiteCal/issues)
+[下载 / Download 1.2.8](https://github.com/victor-zhang-2026/LiteCal/releases/download/v1.2.8/LiteCal-1.2.8-macOS-arm64.zip) · [发布说明 / Release notes](https://github.com/victor-zhang-2026/LiteCal/releases/tag/v1.2.8) · [反馈 / Issues](https://github.com/victor-zhang-2026/LiteCal/issues)
 
 ![LiteCal 整月日历，使用虚构演示事项](docs/images/calendar.png)
 
@@ -22,6 +22,7 @@ A native floating calendar for macOS. Hover to see your week or month, capture a
 - **连续多日**：横条跨日期显示，跨周分段；拖动整段平移，持续天数保持不变。
 - **轻松定位**：左右方向键按当前模式切月或切周；月视图点击年月快速跳转，周视图点击含年份的标题按整周跳转；「今天」返回当前月或今天所在周。
 - **自然聚焦**：已结束事项自动变浅，今天与未来事项保持清晰；历史事项仍可操作。
+- **深浅外观**：日历可切换明暗；深色模式用灰阶区分过去和未来日期，以紫色标记今天。标题栏操作提供悬停提示。
 - **本地离线**：无账号、服务器、同步、广告、遥测或系统日历读取。
 
 Hover to open; click to keep the calendar visible until you click elsewhere. The month grid shows three event rows per date with `+N` overflow; the vertical week view lists all events in seven day rows. See Gregorian and Chinese lunar dates, double-click to create, drag across dates for a range, edit by clicking, and move an event while keeping its duration. The window remembers your view. Arrow keys navigate months or weeks; click the year-bearing week title to choose a whole week, or the month title to jump to a month. Past events fade automatically. Repeat events daily, weekly, monthly or yearly with a single selection.
@@ -30,7 +31,7 @@ Hover to open; click to keep the calendar visible until you click elsewhere. The
 
 ## 安装 / Install
 
-1. 下载上方的 `LiteCal-1.2.7-macOS-arm64.zip`，解压并将 `LiteCal.app` 拖入「应用程序」。GitHub 的 `Source code` 为源码，不是安装包。
+1. 下载上方的 `LiteCal-1.2.8-macOS-arm64.zip`，解压并将 `LiteCal.app` 拖入「应用程序」。GitHub 的 `Source code` 为源码，不是安装包。
 2. 如已有 LiteCal 在运行，先右键悬浮球退出，再打开新版。日程文件会继续保留。
 3. 当前版本使用 ad-hoc 本地签名，未经过 Developer ID 签名或 Apple 公证。确认来自本仓库并核对 Release 的 `SHA256SUMS` 后，如被系统拦截，按 [Apple 安装说明](https://support.apple.com/en-us/102445)在「系统设置 → 隐私与安全性」中选择「仍要打开」。
 
@@ -92,7 +93,7 @@ If several SDKs are installed, set `LITECAL_MACOS_SDK` to one compatible with yo
 ./scripts/test-week.sh
 ```
 
-Core tests cover civil dates, lunar dates, persistence/migration and layout. Native tests show temporary windows and use isolated test data. Version 1.2.1 previously passed 16,690 core assertions, 310 existing native assertions and 716 week-view assertions for the earlier horizontal layout. The vertical week view and the 1.2.7 month/week control were accepted in the local App by the user. Version 1.2.7 was built and package-verified without new automated functional or UI tests. Physical multi-monitor/scaling and older systems remain outside full coverage. See [historical validation](release/v1.2.1/MANIFEST.md) and [current release checks](release/v1.2.7/MANIFEST.md).
+Core tests cover civil dates, lunar dates, persistence/migration and layout. Native tests show temporary windows and use isolated test data. Version 1.2.1 previously passed 16,690 core assertions, 310 existing native assertions and 716 week-view assertions for the earlier horizontal layout. The vertical week view and the 1.2.7 month/week control were accepted in the local App by the user. Version 1.2.8 was built and package-verified without new automated functional or UI tests; the latest date styling was reviewed through user feedback. Physical multi-monitor/scaling and older systems remain outside full coverage. See [historical validation](release/v1.2.1/MANIFEST.md) and [current release checks](release/v1.2.8/MANIFEST.md).
 
 ```text
 Sources/LiteCal/  App lifecycle, floating panels, calendar, editor and storage
