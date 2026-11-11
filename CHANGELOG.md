@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.7 — 2026-11-11
+
+- 月／周按钮支持按住拖动切换；直接点击时，浅灰毛玻璃选中块先滑动，再切换日历内容。
+- 选中模式文字改为紫色，保留现有月历、纵向周历和日程存储。交互效果已由用户在本机确认；本次发布不新增自动化功能或界面测试。
+- Drag or click the month/week control; the frosted selection slides before the calendar changes. Event data is unchanged.
+
 ## 1.2.6 — 2026-11-11
 
 - 周视图改为周一至周日纵向七行，每行显示星期、公历与农历、当天全部事项；多事项自动扩高，超出屏幕时内部滚动。

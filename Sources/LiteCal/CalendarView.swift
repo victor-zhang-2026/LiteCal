@@ -57,34 +57,126 @@ extension Theme {
 enum CalendarDisplayMode: String { case month, week }
 private final class FlippedWeekDocument: NSView { override var isFlipped: Bool { true } }
 
-/// Native sliding selection; the calendar and window share the same animation context.
+private final class ModeSegmentButton: ActionButton {
+    var onTrack: ((NSPoint) -> Void)?
+    var onRelease: ((NSPoint, Bool) -> Void)?
+    override func mouseDown(with event: NSEvent) {
+        guard isEnabled, let parent = superview else { return }
+        let origin = parent.convert(event.locationInWindow, from: nil)
+        var dragged = false
+        while let next = window?.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
+            let point = parent.convert(next.locationInWindow, from: nil)
+            if next.type == .leftMouseDragged {
+                if hypot(point.x - origin.x, point.y - origin.y) > 3 { dragged = true }
+                if dragged { onTrack?(point) }
+            } else {
+                onRelease?(point, dragged)
+                break
+            }
+        }
+    }
+}
+
+/// A frosted selection that follows the pointer and settles on release.
 final class CalendarModeControl: NSView {
     private let selection = NSView()
+    private let glass = NSVisualEffectView()
+    private let tint = NSView()
     private(set) var buttons: [ActionButton] = []
     private(set) var mode: CalendarDisplayMode = .month
+    private var trackingDrag = false
+    private var selectionAnimating = false
+    private var selectionToken = 0
     var onSelect: ((CalendarDisplayMode) -> Void)?
     override var isFlipped: Bool { true }
     override init(frame: NSRect) {
         super.init(frame: frame)
-        wantsLayer = true; layer?.backgroundColor = NSColor(white: 0.95, alpha: 1).cgColor; layer?.cornerRadius = 7
-        selection.wantsLayer = true; selection.layer?.backgroundColor = Theme.purple.cgColor; selection.layer?.cornerRadius = 5
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.white.withAlphaComponent(0.7).cgColor
+        layer?.cornerRadius = 16
+        layer?.borderWidth = 0.75
+        layer?.borderColor = Theme.line.withAlphaComponent(0.8).cgColor
+        selection.wantsLayer = true; selection.layer?.cornerRadius = 14; selection.layer?.masksToBounds = true
+        selection.layer?.borderWidth = 0.75
+        selection.layer?.borderColor = NSColor.white.withAlphaComponent(0.8).cgColor
+        glass.material = .popover; glass.blendingMode = .withinWindow; glass.state = .active
+        glass.autoresizingMask = [.width, .height]; selection.addSubview(glass)
+        tint.wantsLayer = true; tint.layer?.backgroundColor = NSColor(white: 0.78, alpha: 0.4).cgColor
+        tint.autoresizingMask = [.width, .height]; selection.addSubview(tint)
         addSubview(selection)
         for (title, value) in [("月", CalendarDisplayMode.month), ("周", .week)] {
-            let button = ActionButton(title: title) { [weak self] in self?.onSelect?(value) }
+            let button = ModeSegmentButton(title: title) { [weak self] in self?.choose(value) }
             button.font = .systemFont(ofSize: 13, weight: .medium)
+            button.onTrack = { [weak self] point in self?.preview(at: point) }
+            button.onRelease = { [weak self] point, dragged in
+                guard let self else { return }
+                self.trackingDrag = false
+                if dragged {
+                    self.choose(point.x >= self.bounds.midX ? .week : .month)
+                } else if self.bounds.contains(point) {
+                    self.choose(value)
+                } else {
+                    self.settleSelection()
+                }
+            }
             button.setAccessibilityLabel(title + "视图"); buttons.append(button); addSubview(button)
         }
     }
     required init?(coder: NSCoder) { fatalError() }
-    func select(_ value: CalendarDisplayMode) { mode = value; needsLayout = true }
+    private func choose(_ value: CalendarDisplayMode) {
+        if value == mode { settleSelection(); return }
+        settleSelection(to: value) { [weak self] in self?.onSelect?(value) }
+    }
+    private func preview(at point: NSPoint) {
+        trackingDrag = true
+        selection.layer?.removeAllAnimations()
+        let width = (bounds.width - 4) / 2
+        selection.frame.origin.x = min(2 + width, max(2, point.x - width / 2))
+    }
+    private func settleSelection() {
+        settleSelection(to: mode)
+    }
+    private func settleSelection(to value: CalendarDisplayMode, completion: (() -> Void)? = nil) {
+        selectionToken += 1
+        let token = selectionToken
+        selectionAnimating = true
+        let width = (bounds.width - 4) / 2
+        let target = NSRect(x: 2 + (value == .week ? width : 0), y: 2, width: width, height: bounds.height - 4)
+        guard window?.isVisible == true, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
+            selection.frame = target; selectionAnimating = false; completion?(); return
+        }
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.18; context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            selection.animator().frame = target
+        }, completionHandler: { [weak self] in
+            guard let self, self.selectionToken == token else { return }
+            self.selectionAnimating = false
+            completion?()
+        })
+    }
+    func select(_ value: CalendarDisplayMode) {
+        let changed = mode != value
+        if changed { selectionToken += 1; selectionAnimating = false }
+        mode = value
+        needsLayout = true
+        if changed && !trackingDrag {
+            let width = (bounds.width - 4) / 2
+            selection.frame = NSRect(x: 2 + (value == .week ? width : 0), y: 2, width: width, height: bounds.height - 4)
+        }
+    }
     override func layout() {
         super.layout()
         let width = (bounds.width - 4) / 2
-        selection.frame = NSRect(x: 2 + (mode == .week ? width : 0), y: 2, width: width, height: bounds.height - 4)
+        glass.frame = selection.bounds; tint.frame = selection.bounds
+        if !trackingDrag && !selectionAnimating && mode == (selection.frame.midX >= bounds.midX ? .week : .month) {
+            selection.frame = NSRect(x: 2 + (mode == .week ? width : 0), y: 2, width: width, height: bounds.height - 4)
+        }
         for (index, button) in buttons.enumerated() {
             button.frame = NSRect(x: 2 + CGFloat(index) * width, y: 2, width: width, height: bounds.height - 4)
-            button.contentTintColor = (index == 0) == (mode == .month) ? .white : Theme.muted
-            button.setAccessibilityValue((index == 0) == (mode == .month) ? "已选中" : "未选中")
+            let selected = (index == 0) == (mode == .month)
+            button.contentTintColor = selected ? Theme.purple : Theme.muted
+            button.font = .systemFont(ofSize: 13, weight: selected ? .semibold : .medium)
+            button.setAccessibilityValue(selected ? "已选中" : "未选中")
         }
     }
     var selectionView: NSView { selection }
